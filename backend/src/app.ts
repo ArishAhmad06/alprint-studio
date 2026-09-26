@@ -1,3 +1,16 @@
-const appName: string = "Alprint-studio";
+import express from "express";
 
-console.log(appName);
+const app = express();
+
+app.use(express.json());
+
+app.get("/api/v1/health", (_req, res) => {
+  res.status(200).json({
+    data: {
+      status: "ok",
+    },
+    error: null,
+  });
+});
+
+export default app;
