@@ -1,0 +1,6 @@
+config.env.PORT=
+config.env.DATABASE_URL=
+config.env.JWT_ACCESS_TOKEN_SCERET=
+config.env.JWT_REFRESH_TOKEN_SCERET=
+config.env.JWT_ACCESS_TOKEN_EXPIRY=
+config.env.JWT_REFRESH_TOKEN_EXPIRY=
