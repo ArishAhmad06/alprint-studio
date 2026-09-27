@@ -2,7 +2,8 @@ import express from "express";
 import { requestIdMiddleware } from "./common/http/request-id.js";
 import { pinoHttp } from "pino-http";
 import logger from "./infrastructure/logger/index.js";
-import { randomUUID } from "node:crypto";
+import { notFoundHandler } from "./common/http/not-found.js";
+import { errorHandler } from "./common/http/error-handler.js";
 
 const app = express();
 
@@ -23,5 +24,8 @@ app.get("/api/v1/health", (_req, res) => {
     error: null,
   });
 });
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;
