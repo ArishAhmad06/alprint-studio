@@ -1,9 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "./errors/app-error.js";
+import logger from "../../infrastructure/logger/index.js";
 
 export const errorHandler = (
   error: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ) => {
@@ -17,6 +18,15 @@ export const errorHandler = (
     });
     return;
   }
+
+  logger.error(
+    {
+      err: error,
+      requestId: req.requestId,
+    },
+    "Unhandled application error",
+  );
+
   res.status(500).json({
     data: null,
     error: {
