@@ -6,9 +6,11 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
-    "types": [],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": [
+      "node"
+    ],
     "rootDir": "src",
     "outDir": "dist",
     "noImplicitAny": true,
