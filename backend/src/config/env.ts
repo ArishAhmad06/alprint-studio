@@ -1,6 +1,18 @@
-// config.env.PORT=
-config.env.DATABASE_URL=
-config.env.JWT_ACCESS_TOKEN_SCERET=
-config.env.JWT_REFRESH_TOKEN_SCERET=
-config.env.JWT_ACCESS_TOKEN_EXPIRY=
-config.env.JWT_REFRESH_TOKEN_EXPIRY=
+import "dotenv/config";
+import { z } from "zod";
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]),
+  PORT: z.coerce.number().int().positive(),
+});
+
+const parsedEnv = envSchema.safeParse(process.env);
+
+if (!parsedEnv.success) {
+  console.error("Invalid environmnet variables:");
+  console.error(parsedEnv.error.format());
+
+  process.exit(1);
+}
+
+export const env = parsedEnv.data;
