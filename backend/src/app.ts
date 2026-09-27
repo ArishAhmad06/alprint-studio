@@ -1,12 +1,17 @@
 import express from "express";
-import PinoHttp, { pinoHttp } from "pino-http";
+import { requestIdMiddleware } from "./common/http/request-id.js";
+import { pinoHttp } from "pino-http";
 import logger from "./infrastructure/logger/index.js";
+import { randomUUID } from "node:crypto";
 
 const app = express();
+
+app.use(requestIdMiddleware);
 
 app.use(
   pinoHttp({
     logger,
+    genReqId: (req) => req.requestId,
   }),
 );
 
