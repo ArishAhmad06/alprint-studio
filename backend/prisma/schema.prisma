@@ -1,21 +1,128 @@
-// use prisma-8
+//  use prisma-8
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String?
-  name      String?
-  posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+enum UserRole {
+  CUSTOMER
+  OWNER
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
-  createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum OtpPurpose {
+  SIGNUP
+  LOGIN
+  PASSWORD_RESET
+}
+
+enum AuthProvider {
+  GOOGLE
+}
+
+model User {
+  id        String      @id @default(uuid())
+  name      String
+  email     String?   @unique
+  phone     String?     @unique
+  passwordHash String
+  role      UserRole    @default(CUSTOMER) 
+  status  UserStatus  @default(ACTIVE)
+
+
+  session UserSession[]
+  addresses  Address[]
+  identities  UserIdentity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+
+model Address{
+  id           String    @id @default(uuid())
+  userId       String
+
+  fullName     String  
+  phone        String   
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  country      String
+
+  isDefault   Boolean   @default(false)
+
+  user        User      @relation(fields:[userId], refrences:[id], onDelete:Cascade)  
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  @@index([userId])
+
+}
+  
+
+model UserSession {
+  id        String   @id @default(uuid())
+  userId    String 
+
+
+  refreshTokenHash  String @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt  DateTime?
+
+
+  user      User    @relation(fields:[userId], refrences:[id], onDelete:Cascade)
+
+  createdAt  DateTime  @default(now())
+  @@index([userId])
+}
+
+
+model OtpVerification{
+  id         String     @id @default(uuid())
+
+  identifier String
+  otpHash   String
+  purpose   OtpPurpose
+
+
+  expiresAt   DateTime
+  attempts    Int    @default(0)
+  verifiedAt    DateTime?
+
+
+  createdAt   DateTime    @default(now())
+
+  @@index([identifier, purpose])
+}
+
+model UserIdentity{
+  id  String      @id @default(uuid())
+  userId  String   
+  provider AuthProvider
+  providerAccountId String
+
+  user User     @relation(fields:[userId], refrences:[id], onDelete = Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([provider, providerAccountId])
+  @@inddex([userId])
+}
+
+model SigupAttempts {
+  id:            String @id  @default(uuid())
+  email    String?
+  phone    String?
+  passwordHask   String
+
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  @@index([email])
+  @@index([phone])
 }
