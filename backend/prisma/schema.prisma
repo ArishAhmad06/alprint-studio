@@ -130,3 +130,103 @@ model SigupAttempts {
   @@index([email])
   @@index([phone])
 }
+
+
+
+
+
+//product catalog
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+
+}
+enum ProdcutCategory {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ProdcutMediaType {
+  IMAGE
+  VIDEO
+  MODEL_3D
+}
+
+
+model Category{
+  id             String            @id @default(uuid())
+  name           String
+  slug           String
+  description    String
+  status         CategoryStatus    @default(ACTIVE)
+  sortOrder      Int               @default(0)
+
+  // self refrencing herarchy
+  parentId       String?
+  parent         Category?        @relation("CategoryHierarchy", fields:[parentID],refrences:[id], onDelete:Restrict)
+
+  children       Category[]       @relation("CategoryHierarchy")
+  products       Prodcut[]
+  prodcutVarient ProductVariant[]
+
+}
+
+model SubCategory {
+  id         String    @id @default(uuid())
+  name       String
+  type       String
+
+
+  categories Category @relation(fields:[categoryId],refrences:[id] )
+}
+
+model Prodcut{
+  id         String    @id @default(uuid())
+
+  name       String
+  type       String
+  category   Category @relation(fields:[categoryId], refrences:[id])
+  slug
+  productUrl String    @unique
+}
+
+model ProductVariant{
+  id           String   @id @default(uuid())
+
+  name         String
+  color        String
+  size         String
+  sku          String
+  price
+  availability String
+  gsm          String
+
+  product      Product @relation(feilds:[productId], refrences:[id])
+}
+  
+
+model Customization {
+  id             String           @id @default(uuid())
+  text           String
+  customizeUrl   String
+  position       String
+  rotation       String
+  scale          String
+  color          String
+  configurations Configuration[]
+}
+
+model Configuration {
+
+}
+
