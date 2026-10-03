@@ -164,20 +164,25 @@ enum ProdcutMediaType {
 
 
 model Category{
-  id             String            @id @default(uuid())
-  name           String
-  slug           String
-  description    String
-  status         CategoryStatus    @default(ACTIVE)
-  sortOrder      Int               @default(0)
+  id          String          @id @default(uuid())
+  name        String
+  slug        String
+  description String
+  status      CategoryStatus  @default(ACTIVE)
+  sortOrder   Int             @default(0)
 
   // self refrencing herarchy
-  parentId       String?
-  parent         Category?        @relation("CategoryHierarchy", fields:[parentID],refrences:[id], onDelete:Restrict)
+  parentId    String?
+  parent      Category?      @relation("CategoryHierarchy", fields:[parentID],refrences:[id], onDelete:Restrict)
+  children    Category[]     @relation("CategoryHierarchy")
 
-  children       Category[]       @relation("CategoryHierarchy")
-  products       Prodcut[]
-  prodcutVarient ProductVariant[]
+  products    Product[]
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([parentId])
+  @@index([status, sortOrder])
 
 }
 
@@ -191,42 +196,137 @@ model SubCategory {
 }
 
 model Prodcut{
-  id         String    @id @default(uuid())
+  id            String              @id @default(uuid())
+  categoryId    String
 
-  name       String
-  type       String
-  category   Category @relation(fields:[categoryId], refrences:[id])
-  slug
-  productUrl String    @unique
+  name          String
+  slug          String              @unique
+  description   String?
+  status        ProductStatus       @default(DRAFT)
+
+  isCutomizable Boolean             @default(false)
+  sortOrder     Int                 @default(0)
+
+
+  category      Category           @relation(fields:[categoryId], refrences:[id], onDelete:Restrict)
+
+
+  variants      ProductVariant[]
+  attributes    ProductAttribute[]
+  media         ProductMedia[]
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+
+  @@index([categoryId])
+  @@index([status, sortOrder])
 }
 
-model ProductVariant{
-  id           String   @id @default(uuid())
 
-  name         String
-  color        String
-  size         String
-  sku          String
-  price
-  availability String
-  gsm          String
+model ProductVariant {
+  id             String              @id @default(uuid())
+  productId      String
 
-  product      Product @relation(feilds:[productId], refrences:[id])
-}
-  
+  sku            String              @unique
+  name           String?
 
-model Customization {
-  id             String           @id @default(uuid())
-  text           String
-  customizeUrl   String
-  position       String
-  rotation       String
-  scale          String
-  color          String
-  configurations Configuration[]
-}
+  price          Decimal             @db.Decimal(10, 2)
+  compareAtPrice Decimal?            @db.Decimal(10, 2)
 
-model Configuration {
+  weight         Decimal?            @db.Decimal(10, 3)
 
+  isActive       Boolean             @default(true)
+  sortOrder      Int                 @default(0)
+
+  product        Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  attributes     VariantAttribute[]
+
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([productId])
+  @@index([productId, isActive, sortOrder])
 }
 
+model Attribute {
+  id        String              @id @default(uuid())
+
+  name      String
+  slug      String              @unique
+
+  values    AttributeValue[]
+  products  ProductAttribute[]
+
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+}
+
+model AttributeValue {
+  id           String              @id @default(uuid())
+  attributeId  String
+
+  value        String
+  slug         String
+
+  attribute    Attribute          @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  productLinks ProductAttribute[]
+  variantLinks VariantAttribute[]
+
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([attributeId, slug])
+  @@index([attributeId])
+}
+
+model ProductAttribute {
+  id               String          @id @default(uuid())
+  productId        String
+  attributeValueId String
+
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeValue   AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, attributeValueId])
+  @@index([productId])
+  @@index([attributeValueId])
+}
+
+model VariantAttribute {
+  id               String          @id @default(uuid())
+  variantId        String
+  attributeValueId String
+
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValue   AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, attributeValueId])
+  @@index([variantId])
+  @@index([attributeValueId])
+}
+
+model ProductMedia {
+  id         String            @id @default(uuid())
+  productId  String
+
+  type       ProductMediaType
+  url        String
+  storageKey String?
+
+  altText    String?
+  sortOrder  Int               @default(0)
+  isPrimary  Boolean           @default(false)
+
+  metadata   Json?
+
+  product    Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([productId, type])
+  @@index([productId, sortOrder])
+}
