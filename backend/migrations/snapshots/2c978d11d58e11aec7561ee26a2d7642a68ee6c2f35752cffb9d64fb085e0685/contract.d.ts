@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'7bb539b94b45fe5d43f5f04e62d5dce83c08587ad76fee07aff5b1504db4f6c3'>;
+  StorageHashBase<'2c978d11d58e11aec7561ee26a2d7642a68ee6c2f35752cffb9d64fb085e0685'>;
 export type ExecutionHash =
   ExecutionHashBase<'479f59cf248e0bd3330d34fd4012234ce075fab7d9f2082a7d395ca357343dae'>;
 export type ProfileHash =
@@ -336,7 +336,7 @@ export type FieldOutputTypes = {
       readonly url: CodecTypes['pg/text@1']['output'];
     };
     readonly ProductVariant: {
-      readonly compareAtPrice: Numeric<10, 2> | null;
+      readonly compareAtPrice: Numeric<10, 2>;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly isActive: CodecTypes['pg/bool@1']['output'];
@@ -346,7 +346,7 @@ export type FieldOutputTypes = {
       readonly sku: CodecTypes['pg/text@1']['output'];
       readonly sortOrder: CodecTypes['pg/int4@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly weight: Numeric<10, 3> | null;
+      readonly weight: Numeric<10, 3>;
     };
     readonly SignupAttempt: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -480,7 +480,7 @@ export type FieldInputTypes = {
       readonly url: CodecTypes['pg/text@1']['input'];
     };
     readonly ProductVariant: {
-      readonly compareAtPrice: CodecTypes['pg/numeric@1']['input'] | null;
+      readonly compareAtPrice: CodecTypes['pg/numeric@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly isActive: CodecTypes['pg/bool@1']['input'];
@@ -490,7 +490,7 @@ export type FieldInputTypes = {
       readonly sku: CodecTypes['pg/text@1']['input'];
       readonly sortOrder: CodecTypes['pg/int4@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly weight: CodecTypes['pg/numeric@1']['input'] | null;
+      readonly weight: CodecTypes['pg/numeric@1']['input'];
     };
     readonly SignupAttempt: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -624,7 +624,7 @@ export type StorageColumnTypes = {
       readonly url: CodecTypes['pg/text@1']['output'];
     };
     readonly ProductVariant: {
-      readonly compareAtPrice: Numeric<10, 2> | null;
+      readonly compareAtPrice: Numeric<10, 2>;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly isActive: CodecTypes['pg/bool@1']['output'];
@@ -634,7 +634,7 @@ export type StorageColumnTypes = {
       readonly sku: CodecTypes['pg/text@1']['output'];
       readonly sortOrder: CodecTypes['pg/int4@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly weight: Numeric<10, 3> | null;
+      readonly weight: Numeric<10, 3>;
     };
     readonly SignupAttempt: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -768,7 +768,7 @@ export type StorageColumnInputTypes = {
       readonly url: CodecTypes['pg/text@1']['input'];
     };
     readonly ProductVariant: {
-      readonly compareAtPrice: CodecTypes['pg/numeric@1']['input'] | null;
+      readonly compareAtPrice: CodecTypes['pg/numeric@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly isActive: CodecTypes['pg/bool@1']['input'];
@@ -778,7 +778,7 @@ export type StorageColumnInputTypes = {
       readonly sku: CodecTypes['pg/text@1']['input'];
       readonly sortOrder: CodecTypes['pg/int4@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly weight: CodecTypes['pg/numeric@1']['input'] | null;
+      readonly weight: CodecTypes['pg/numeric@1']['input'];
     };
     readonly SignupAttempt: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -940,7 +940,7 @@ export namespace Models {
     readonly [RelationKeys]?: 'attributeValue' | 'product';
   };
   export type public_ProductVariant = {
-    compareAtPrice: Numeric<10, 2> | null;
+    compareAtPrice: Numeric<10, 2>;
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     id: CodecTypes['pg/text@1']['output'];
     isActive: CodecTypes['pg/bool@1']['output'];
@@ -950,7 +950,7 @@ export namespace Models {
     sku: CodecTypes['pg/text@1']['output'];
     sortOrder: CodecTypes['pg/int4@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-    weight: Numeric<10, 3> | null;
+    weight: Numeric<10, 3>;
     attributes: public_VariantAttribute[];
     product: public_Product;
     readonly [RelationKeys]?: 'attributes' | 'product';
@@ -1716,7 +1716,7 @@ type ContractBase = Omit<
                 readonly compareAtPrice: {
                   readonly nativeType: 'numeric';
                   readonly codecId: 'pg/numeric@1';
-                  readonly nullable: true;
+                  readonly nullable: false;
                   readonly typeParams: { readonly precision: 10; readonly scale: 2 };
                 };
                 readonly createdAt: {
@@ -1777,7 +1777,7 @@ type ContractBase = Omit<
                 readonly weight: {
                   readonly nativeType: 'numeric';
                   readonly codecId: 'pg/numeric@1';
-                  readonly nullable: true;
+                  readonly nullable: false;
                   readonly typeParams: { readonly precision: 10; readonly scale: 3 };
                 };
               };
@@ -2914,7 +2914,7 @@ type ContractBase = Omit<
           readonly ProductVariant: {
             readonly fields: {
               readonly compareAtPrice: {
-                readonly nullable: true;
+                readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
                   readonly codecId: 'pg/numeric@1';
@@ -2968,7 +2968,7 @@ type ContractBase = Omit<
                 };
               };
               readonly weight: {
-                readonly nullable: true;
+                readonly nullable: false;
                 readonly type: {
                   readonly kind: 'scalar';
                   readonly codecId: 'pg/numeric@1';

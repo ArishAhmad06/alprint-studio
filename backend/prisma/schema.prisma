@@ -204,10 +204,10 @@ model ProductVariant {
   name                           String?
 
   price          Numeric(10, 2)
-  compareAtPrice Numeric?(10, 2)
-  weight         Numeric?(10, 3)
+  compareAtPrice Numeric(10, 2)?
+  weight         Numeric(10, 3)?
 
-  
+
   isActive                       Boolean               @default(true)
   sortOrder                      Int                   @default(0)
 
