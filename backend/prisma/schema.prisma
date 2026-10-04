@@ -186,14 +186,6 @@ model Category{
 
 }
 
-model SubCategory {
-  id         String    @id @default(uuid())
-  name       String
-  type       String
-
-
-  categories Category @relation(fields:[categoryId],refrences:[id] )
-}
 
 model Prodcut{
   id            String              @id @default(uuid())
