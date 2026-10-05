@@ -1,6 +1,7 @@
 import type { IAuthRepository } from "./auth.repository.interface";
-import type { AppError } from "../../common/http/errors/app-error";
 import type { OtpPurpose } from "./auth.types";
+import { signupSchema } from "./auth.schema.js";
+import { hashPassword } from "../../shared/utils/password";
 
 export class AuthService {
   constructor(private readonly authRepository: IAuthRepository) {}
@@ -36,5 +37,27 @@ export class AuthService {
     expiresAt: Date;
   }): Promise<void> {
     await this.authRepository.createOtpVerification(data);
+  }
+
+  async signup(input: unknown) {
+    const data = signupSchema.parse(input);
+
+    const identifier = data.email ?? data.phone!;
+    const existingUser =
+      await this.authRepository.findUserByIdentifier(identifier);
+
+    if (existingUser) {
+      throw new Error("User already exists");
+    }
+    const passwordHash = await hashPassword(data.password);
+
+    const signupAttempt = await this.authRepository.createSignupAttempt({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      passwordHash,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+    return signupAttempt;
   }
 }

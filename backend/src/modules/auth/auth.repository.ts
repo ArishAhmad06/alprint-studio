@@ -1,12 +1,15 @@
 import type { Models } from "../../prisma/schema.js";
 import { db } from "../../prisma/db.js";
+import { or } from "@prisma/orm-postgres/orm-client";
 
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import type { OtpPurpose } from "./auth.types.js";
 
 export class AuthRepository implements IAuthRepository {
   async findUserByIdentifier(identifier: string) {
-    return null;
+    return await db.orm.public.User.where((user) =>
+      or(user.email.eq(identifier), user.phone.eq(identifier)),
+    ).first();
   }
 
   async createSignupAttempt(data: {
