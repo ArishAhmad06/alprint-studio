@@ -64,6 +64,14 @@ export class AuthService {
     const otpHash = hashOtp(otp); // use otphash in db
 
 
+    //otp invalidation
+    await this.authRepository.invalidatePreviousOtp(
+      identifier,
+      "SIGNUP"
+    )
+
+
+    //store on the db service
     await this.authRepository.createOtpVerification({
       identifier,
       otpHash,
@@ -71,6 +79,8 @@ export class AuthService {
       expiresAt:new Date(Date.now()+5*60*1000),
     })
 
-    return signupAttempt;
+    return {
+      message:"Otp sent successfully",
+    }
   }
 }
