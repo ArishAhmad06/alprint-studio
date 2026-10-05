@@ -1,6 +1,6 @@
 import type { Models } from "../../prisma/schema.js";
 import type { OtpPurpose, UserRecord } from "./auth.types.js";
-import { db } from "../../prisma/db.js";
+
 
 export interface IAuthRepository {
   findUserByIdentifier(identifier: string): Promise<UserRecord | null>;
