@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
-import { signupSchema, verifySignupOtpSchema } from "./auth.schema.js";
+import { signupSchema, verifySignupOtpSchema , loginSchema} from "./auth.schema.js";
 import type { IAuthRepository } from "./auth.repository.interface.js";
-import { hashPassword } from "../../shared/utils/password.js";
+import { hashPassword, verifyPassword } from "../../shared/utils/password.js";
 import { generateOtp, hashOtp } from "../../shared/utils/otp.js";
 import { fromInstant } from "../../shared/utils/temporal.js";
 import type { IOtpProvider } from "../../infrastructure/otp/otp.provider.js";
@@ -106,10 +106,46 @@ export class AuthService {
       passwordHash: signupAttempt.passwordHash,
     });
 
-    
     return {
       message: "Signup completed successfully",
       userId: user.id,
     };
   }
+
+
+  // login service
+  async login(input: unknown) {
+  const data = loginSchema.parse(input);
+
+  const identifier = data.email ?? data.phone!;
+
+  const user =
+    await this.authRepository.findUserByIdentifier(identifier);
+
+  if (!user) {
+    throw new Error("Invalid credentials");
+  }
+
+  if (user.status !== "ACTIVE") {
+    throw new Error("Account is not active");
+  }
+
+  if (!user.passwordHash) {
+    throw new Error("Password login is not available for this account");
+  }
+
+  const isPasswordValid = await verifyPassword(
+    data.password,
+    user.passwordHash,
+  );
+
+  if (!isPasswordValid) {
+    throw new Error("Invalid credentials");
+  }
+
+  return {
+    message: "Login successful",
+    userId: user.id,
+  };
+}
 }

@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { authService } from "../../infrastructure/container/index.js";
+import { success } from "zod";
 
 export class AuthController {
   signup = async (req: Request, res: Response) => {
@@ -13,6 +14,16 @@ export class AuthController {
 
   verifySignupOtp = async (req: Request, res: Response) => {
     const result = await authService.verifySignupOtp(req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  };
+
+  //login controller
+  login = async (req: Request, res: Response) => {
+    const result = await authService.login(req.body);
 
     return res.status(200).json({
       success: true,

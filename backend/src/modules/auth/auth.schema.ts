@@ -35,3 +35,17 @@ export const verifySignupOtpSchema = z.object({
     .transform((v) => (v.includes("@") ? v.toLowerCase() : normalizePhone(v))),
   otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
 });
+
+
+
+//login schema
+export const loginSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email().optional(),
+    phone: phoneSchema.optional(),
+    password: z.string().min(1, "Password is required"),
+  })
+  .refine((data) => Boolean(data.email) !== Boolean(data.phone), {
+    message: "Provide either email or phone, not both",
+    path: ["email"],
+  });
