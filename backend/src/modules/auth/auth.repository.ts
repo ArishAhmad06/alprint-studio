@@ -30,6 +30,47 @@ export class AuthRepository implements IAuthRepository {
     return signupAttempt;
   }
 
+  async findSignupAttemptByIdentifier(
+    identifier: string,
+  ): Promise<Models.public_SignupAttempt | null> {
+    return await db.orm.public.SignupAttempt.where((attempt) =>
+      or(attempt.email.eq(identifier), attempt.phone.eq(identifier)),
+    ).first();
+  }
+
+  async findOtpVerification(
+    identifier: string,
+    purpose: OtpPurpose,
+  ): Promise<Models.public_OtpVerification | null> {
+    return await db.orm.public.OtpVerification.where({
+      identifier,
+      purpose,
+      verifiedAt: null,
+    }).first();
+  }
+
+  async incrementOtpAttempts(otpId: string): Promise<void> {
+    const otp = await db.orm.public.OtpVerification.where({
+      id: otpId,
+    }).first();
+
+    if (!otp) {
+      return;
+    }
+
+    await db.orm.public.OtpVerification.where({ id: otpId }).updateAll({
+      attempts: otp.attempts + 1,
+    });
+  }
+
+  async markOtpVerified(otpId: string): Promise<void> {
+    await db.orm.public.OtpVerification.where({
+      id: otpId,
+    }).updateAll({
+      verifiedAt: new Date(),
+    });
+  }
+
   async invalidatePreviousOtp(
     identifier: string,
     purpose: OtpPurpose,

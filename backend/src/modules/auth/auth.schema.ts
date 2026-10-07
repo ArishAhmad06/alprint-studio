@@ -20,3 +20,8 @@ export const signupSchema = z
     message: "Email or phone is required",
     path: ["email"],
   });
+
+export const verifySignupOtpSchema = z.object({
+  identifier: z.string().trim().min(1),
+  otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
+});

@@ -1,6 +1,6 @@
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import type { OtpPurpose } from "./auth.types.js";
-import { signupSchema } from "./auth.schema.js";
+import { signupSchema, verifySignupOtpSchema } from "./auth.schema.js";
 import { hashPassword } from "../../shared/utils/password.js";
 import { generateOtp, hashOtp } from "../../shared/utils/otp.js";
 import type { IOtpProvider } from "../../infrastructure/otp/otp.provider.js";
@@ -81,6 +81,38 @@ export class AuthService {
 
     return {
       message: "Otp sent successfully",
+    };
+  }
+  async verifySignupOtp(input: unknown) {
+    const data = verifySignupOtpSchema.parse(input);
+
+    const otpRecord = await this.authRepository.findOtpVerification(
+      data.identifier,
+      "SIGNUP",
+    );
+
+    if (!otpRecord) {
+      throw new Error("OTP not found");
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      throw new Error("OTP expired");
+    }
+
+    if (otpRecord.attempts >= 5) {
+      throw new Error("Too many OTP attempts");
+    }
+    const submittedOtpHash = hashOtp(data.otp);
+
+    if (submittedOtpHash != otpRecord.otpHash) {
+      await this.authRepository.incrementOtpAttempts(otpRecord.id);
+
+      throw new Error("Invalid OTP");
+    }
+    await this.authRepository.markOtpVerified(otpRecord.id);
+
+    return {
+      message: "OTP verified successfully",
     };
   }
 }
