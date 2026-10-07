@@ -23,7 +23,7 @@ export interface IAuthRepository {
 
   incrementOtpAttempts(otpId: string): Promise<void>;
 
-  markOtpVerified(otpId: string): Promise<void>;
+  markOtpAsVerified(otpId: string): Promise<void>;
 
   invalidatePreviousOtp(identifier: string, purpose: OtpPurpose): Promise<void>;
 
@@ -33,4 +33,13 @@ export interface IAuthRepository {
     purpose: OtpPurpose;
     expiresAt: Date;
   }): Promise<void>;
+
+  createUser(data: {
+    name: string;
+    email?: string | undefined;
+    phone?: string | undefined;
+    passwordHash: string;
+  }): Promise<UserRecord>;
+
+  deleteSignupAttemptByIdentifier(identifier: string): Promise<void>;
 }

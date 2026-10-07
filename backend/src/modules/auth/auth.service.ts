@@ -1,8 +1,9 @@
-import type { IAuthRepository } from "./auth.repository.interface.js";
-import type { OtpPurpose } from "./auth.types.js";
+import crypto from "node:crypto";
 import { signupSchema, verifySignupOtpSchema } from "./auth.schema.js";
+import type { IAuthRepository } from "./auth.repository.interface.js";
 import { hashPassword } from "../../shared/utils/password.js";
 import { generateOtp, hashOtp } from "../../shared/utils/otp.js";
+import { fromInstant } from "../../shared/utils/temporal.js";
 import type { IOtpProvider } from "../../infrastructure/otp/otp.provider.js";
 
 export class AuthService {
@@ -10,39 +11,6 @@ export class AuthService {
     private readonly authRepository: IAuthRepository,
     private readonly otpProvider: IOtpProvider,
   ) {}
-
-  async findUserByIdentifier(identifier: string) {
-    return this.authRepository.findUserByIdentifier(identifier);
-  }
-
-  async createSignupAttempt(data: {
-    name: string;
-    email?: string;
-    phone?: string;
-    passwordHash: string;
-    expiresAt: Date;
-  }) {
-    return this.authRepository.createSignupAttempt(data);
-  }
-
-  async invalidatePreviousOtp(data: {
-    identifier: string;
-    purpose: OtpPurpose;
-  }): Promise<void> {
-    await this.authRepository.invalidatePreviousOtp(
-      data.identifier,
-      data.purpose,
-    );
-  }
-
-  async createOtpVerification(data: {
-    identifier: string;
-    otpHash: string;
-    purpose: OtpPurpose;
-    expiresAt: Date;
-  }): Promise<void> {
-    await this.authRepository.createOtpVerification(data);
-  }
 
   async signup(input: unknown) {
     const data = signupSchema.parse(input);
@@ -55,7 +23,10 @@ export class AuthService {
     if (existingUser) {
       throw new Error("User already exists");
     }
+
     const passwordHash = await hashPassword(data.password);
+
+    await this.authRepository.deleteSignupAttemptByIdentifier(identifier);
 
     await this.authRepository.createSignupAttempt({
       name: data.name,
@@ -66,7 +37,7 @@ export class AuthService {
     });
 
     const otp = generateOtp();
-    const otpHash = hashOtp(otp); // use otphash in db
+    const otpHash = hashOtp(otp);
 
     await this.authRepository.invalidatePreviousOtp(identifier, "SIGNUP");
 
@@ -83,6 +54,7 @@ export class AuthService {
       message: "Otp sent successfully",
     };
   }
+
   async verifySignupOtp(input: unknown) {
     const data = verifySignupOtpSchema.parse(input);
 
@@ -95,24 +67,50 @@ export class AuthService {
       throw new Error("OTP not found");
     }
 
-    if (otpRecord.expiresAt < new Date()) {
+    if (fromInstant(otpRecord.expiresAt) < new Date()) {
       throw new Error("OTP expired");
     }
 
     if (otpRecord.attempts >= 5) {
       throw new Error("Too many OTP attempts");
     }
-    const submittedOtpHash = hashOtp(data.otp);
 
-    if (submittedOtpHash != otpRecord.otpHash) {
+    const submitted = Buffer.from(hashOtp(data.otp), "hex");
+    const stored = Buffer.from(otpRecord.otpHash, "hex");
+    const isValid =
+      submitted.length === stored.length &&
+      crypto.timingSafeEqual(submitted, stored);
+
+    if (!isValid) {
       await this.authRepository.incrementOtpAttempts(otpRecord.id);
-
       throw new Error("Invalid OTP");
     }
-    await this.authRepository.markOtpVerified(otpRecord.id);
+
+    const signupAttempt =
+      await this.authRepository.findSignupAttemptByIdentifier(data.identifier);
+
+    if (!signupAttempt) {
+      throw new Error("Signup attempt not found");
+    }
+
+    if (fromInstant(signupAttempt.expiresAt) < new Date()) {
+      throw new Error("Signup attempt expired");
+    }
+
+    const user = await this.authRepository.createUser({
+      name: signupAttempt.name,
+      email: signupAttempt.email ?? undefined,
+      phone: signupAttempt.phone ?? undefined,
+      passwordHash: signupAttempt.passwordHash,
+    });
+
+    await this.authRepository.markOtpAsVerified(otpRecord.id);
+
+    await this.authRepository.deleteSignupAttemptByIdentifier(data.identifier);
 
     return {
-      message: "OTP verified successfully",
+      message: "Signup completed successfully",
+      userId: user.id,
     };
   }
 }

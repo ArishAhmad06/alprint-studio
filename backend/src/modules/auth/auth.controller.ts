@@ -10,4 +10,13 @@ export class AuthController {
       data: result,
     });
   };
+
+  verifySignupOtp = async (req: Request, res: Response) => {
+    const result = await authService.verifySignupOtp(req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  };
 }
