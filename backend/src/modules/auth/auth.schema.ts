@@ -36,8 +36,6 @@ export const verifySignupOtpSchema = z.object({
   otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
 });
 
-
-
 //login schema
 export const loginSchema = z
   .object({
@@ -49,3 +47,7 @@ export const loginSchema = z
     message: "Provide either email or phone, not both",
     path: ["email"],
   });
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required"),
+});

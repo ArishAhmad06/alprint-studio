@@ -153,7 +153,6 @@ export class AuthRepository implements IAuthRepository {
     });
   }
   //refreshToken
-
   async createSession(data: {
     userId: string;
     refreshTokenHash: string;
@@ -166,6 +165,34 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
+  async rotateRefreshSession(data: {
+    sessionId: string;
+    userId: string;
+    refreshTokenHash: string;
+    expiresAt: Date;
+  }): Promise<UserSessionRecord | null> {
+    return await db.transaction(async (tx) => {
+      const revokeResult = await tx.orm.public.UserSession.where({
+        id: data.sessionId,
+        userId: data.userId,
+        revokedAt: null,
+      }).updateAll({
+        revokedAt: toInstant(new Date()),
+      });
+
+      if (revokeResult.length !== 1) {
+        return null;
+      }
+
+      return await tx.orm.public.UserSession.create({
+        userId: data.userId,
+        refreshTokenHash: data.refreshTokenHash,
+        expiresAt: toInstant(data.expiresAt),
+      });
+    });
+  }
+
+
   async findSessionByRefreshTokenHash(
     refreshTokenHash: string,
   ): Promise<UserSessionRecord | null> {
@@ -173,6 +200,15 @@ export class AuthRepository implements IAuthRepository {
       refreshTokenHash,
       revokedAt: null,
     }).first();
+  }
+
+  async updateSessionLastUsedAt(sessionId: string): Promise<void> {
+    await db.orm.public.UserSession.where({
+      id: sessionId,
+      revokedAt: null,
+    }).updateAll({
+      lastUsedAt: toInstant(new Date()),
+    });
   }
 
   async revokeSession(sessionId: string): Promise<void> {

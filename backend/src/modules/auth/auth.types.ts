@@ -1,3 +1,4 @@
+import type { Temporal } from "@js-temporal/polyfill";
 export type AuthIdentifier =
   | {
       type: "email";
@@ -26,8 +27,8 @@ export type UserSessionRecord = {
   id: string;
   userId: string;
   refreshTokenHash: string;
-  expiresAt: Date;
-  revokedAt: Date | null;
-  lastUsedAt: Date | null;
-  createdAt: Date;
+  expiresAt: Temporal.Instant;
+  revokedAt: Temporal.Instant | null;
+  lastUsedAt: Temporal.Instant | null;
+  createdAt: Temporal.Instant;
 };

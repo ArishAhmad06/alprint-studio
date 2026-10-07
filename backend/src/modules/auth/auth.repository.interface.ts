@@ -1,5 +1,9 @@
 import type { Models } from "../../prisma/schema.js";
-import type { OtpPurpose, UserRecord , UserSessionRecord} from "./auth.types.js";
+import type {
+  OtpPurpose,
+  UserRecord,
+  UserSessionRecord,
+} from "./auth.types.js";
 
 export interface IAuthRepository {
   findUserByIdentifier(identifier: string): Promise<UserRecord | null>;
@@ -61,6 +65,15 @@ export interface IAuthRepository {
   findSessionByRefreshTokenHash(
     refreshTokenHash: string,
   ): Promise<UserSessionRecord | null>;
+
+  rotateRefreshSession(data: {
+    sessionId: string;
+    userId: string;
+    refreshTokenHash: string;
+    expiresAt: Date;
+  }): Promise<UserSessionRecord | null>;
+
+  updateSessionLastUsedAt(sessionId: string): Promise<void>;
 
   revokeSession(sessionId: string): Promise<void>;
 }

@@ -16,6 +16,7 @@ export const errorHandler = (
         message: error.message,
       },
     });
+
     return;
   }
 

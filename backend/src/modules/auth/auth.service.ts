@@ -3,6 +3,7 @@ import {
   signupSchema,
   verifySignupOtpSchema,
   loginSchema,
+  refreshTokenSchema,
 } from "./auth.schema.js";
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import { hashPassword, verifyPassword } from "../../shared/utils/password.js";
@@ -14,6 +15,7 @@ import {
   generateRefreshToken,
   hashRefreshToken,
 } from "../../shared/utils/token.js";
+import { AppError } from "../../common/http/errors/app-error.js";
 
 export class AuthService {
   constructor(
@@ -30,7 +32,7 @@ export class AuthService {
       await this.authRepository.findUserByIdentifier(identifier);
 
     if (existingUser) {
-      throw new Error("User already exists");
+      throw new AppError(409, "USER_ALREADY_EXISTS", "User already exists");
     }
 
     const passwordHash = await hashPassword(data.password);
@@ -73,15 +75,15 @@ export class AuthService {
     );
 
     if (!otpRecord) {
-      throw new Error("OTP not found");
+      throw new AppError(400, "OTP_NOT_FOUND", "OTP not found");
     }
 
     if (fromInstant(otpRecord.expiresAt) < new Date()) {
-      throw new Error("OTP expired");
+      throw new AppError(400, "OTP_EXPIRED", "OTP expired");
     }
 
     if (otpRecord.attempts >= 5) {
-      throw new Error("Too many OTP attempts");
+      throw new AppError(429, "OTP_ATTEMPTS_EXCEEDED", "Too many OTP attempts");
     }
 
     const submitted = Buffer.from(hashOtp(data.otp), "hex");
@@ -92,18 +94,27 @@ export class AuthService {
 
     if (!isValid) {
       await this.authRepository.incrementOtpAttempts(otpRecord.id);
-      throw new Error("Invalid OTP");
+
+      throw new AppError(400, "INVALID_OTP", "Invalid OTP");
     }
 
     const signupAttempt =
       await this.authRepository.findSignupAttemptByIdentifier(data.identifier);
 
     if (!signupAttempt) {
-      throw new Error("Signup attempt not found");
+      throw new AppError(
+        400,
+        "SIGNUP_ATTEMPT_NOT_FOUND",
+        "Signup attempt not found",
+      );
     }
 
     if (fromInstant(signupAttempt.expiresAt) < new Date()) {
-      throw new Error("Signup attempt expired");
+      throw new AppError(
+        400,
+        "SIGNUP_ATTEMPT_EXPIRED",
+        "Signup attempt expired",
+      );
     }
 
     const user = await this.authRepository.completeSignupVerification({
@@ -130,15 +141,19 @@ export class AuthService {
     const user = await this.authRepository.findUserByIdentifier(identifier);
 
     if (!user) {
-      throw new Error("Invalid credentials");
+      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     if (user.status !== "ACTIVE") {
-      throw new Error("Account is not active");
+      throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
     }
 
     if (!user.passwordHash) {
-      throw new Error("Password login is not available for this account");
+      throw new AppError(
+        400,
+        "PASSWORD_LOGIN_UNAVAILABLE",
+        "Password login is not available for this account",
+      );
     }
 
     const isPasswordValid = await verifyPassword(
@@ -147,7 +162,7 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new Error("Invalid credentials");
+      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     const refreshToken = generateRefreshToken();
@@ -178,6 +193,57 @@ export class AuthService {
       message: "Login successful",
       accessToken,
       refreshToken,
+    };
+  }
+
+  async refresh(input: unknown) {
+    const data = refreshTokenSchema.parse(input);
+
+    const refreshTokenHash = hashRefreshToken(data.refreshToken);
+
+    const session =
+      await this.authRepository.findSessionByRefreshTokenHash(refreshTokenHash);
+
+    if (!session) {
+      throw new AppError(401, "INVALID_REFRESH_TOKEN", "Invalid refresh token");
+    }
+
+    if (fromInstant(session.expiresAt) < new Date()) {
+      throw new AppError(401, "REFRESH_TOKEN_EXPIRED", "Refresh token expired");
+    }
+
+    const newRefreshToken = generateRefreshToken();
+
+    const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
+
+    const newRefreshTokenExpiresAt = new Date(
+      Date.now() +
+        Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30") *
+          24 *
+          60 *
+          60 *
+          1000,
+    );
+
+    const newSession = await this.authRepository.rotateRefreshSession({
+      sessionId: session.id,
+      userId: session.userId,
+      refreshTokenHash: newRefreshTokenHash,
+      expiresAt: newRefreshTokenExpiresAt,
+    });
+
+    if (!newSession) {
+      throw new AppError(401, "INVALID_REFRESH_TOKEN", "Invalid refresh token");
+    }
+
+    const accessToken = await generateAccessToken({
+      userId: session.userId,
+      sessionId: newSession.id,
+    });
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
     };
   }
 }
