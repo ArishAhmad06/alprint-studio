@@ -21,3 +21,13 @@ export type UserRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type UserSessionRecord = {
+  id: string;
+  userId: string;
+  refreshTokenHash: string;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  lastUsedAt: Date | null;
+  createdAt: Date;
+};

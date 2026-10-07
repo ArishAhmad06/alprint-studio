@@ -1,5 +1,5 @@
 import type { Models } from "../../prisma/schema.js";
-import type { OtpPurpose, UserRecord } from "./auth.types.js";
+import type { OtpPurpose, UserRecord , UserSessionRecord} from "./auth.types.js";
 
 export interface IAuthRepository {
   findUserByIdentifier(identifier: string): Promise<UserRecord | null>;
@@ -44,11 +44,23 @@ export interface IAuthRepository {
   deleteSignupAttemptByIdentifier(identifier: string): Promise<void>;
 
   completeSignupVerification(data: {
-  otpId: string;
-  identifier: string;
-  name: string;
-  email?: string | undefined;
-  phone?: string | undefined;
-  passwordHash: string;
-}): Promise<UserRecord>;
+    otpId: string;
+    identifier: string;
+    name: string;
+    email?: string | undefined;
+    phone?: string | undefined;
+    passwordHash: string;
+  }): Promise<UserRecord>;
+
+  createSession(data: {
+    userId: string;
+    refreshTokenHash: string;
+    expiresAt: Date;
+  }): Promise<UserSessionRecord>;
+
+  findSessionByRefreshTokenHash(
+    refreshTokenHash: string,
+  ): Promise<UserSessionRecord | null>;
+
+  revokeSession(sessionId: string): Promise<void>;
 }

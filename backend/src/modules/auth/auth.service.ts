@@ -1,10 +1,19 @@
 import crypto from "node:crypto";
-import { signupSchema, verifySignupOtpSchema , loginSchema} from "./auth.schema.js";
+import {
+  signupSchema,
+  verifySignupOtpSchema,
+  loginSchema,
+} from "./auth.schema.js";
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import { hashPassword, verifyPassword } from "../../shared/utils/password.js";
 import { generateOtp, hashOtp } from "../../shared/utils/otp.js";
 import { fromInstant } from "../../shared/utils/temporal.js";
 import type { IOtpProvider } from "../../infrastructure/otp/otp.provider.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  hashRefreshToken,
+} from "../../shared/utils/token.js";
 
 export class AuthService {
   constructor(
@@ -112,40 +121,63 @@ export class AuthService {
     };
   }
 
-
   // login service
   async login(input: unknown) {
-  const data = loginSchema.parse(input);
+    const data = loginSchema.parse(input);
 
-  const identifier = data.email ?? data.phone!;
+    const identifier = data.email ?? data.phone!;
 
-  const user =
-    await this.authRepository.findUserByIdentifier(identifier);
+    const user = await this.authRepository.findUserByIdentifier(identifier);
 
-  if (!user) {
-    throw new Error("Invalid credentials");
+    if (!user) {
+      throw new Error("Invalid credentials");
+    }
+
+    if (user.status !== "ACTIVE") {
+      throw new Error("Account is not active");
+    }
+
+    if (!user.passwordHash) {
+      throw new Error("Password login is not available for this account");
+    }
+
+    const isPasswordValid = await verifyPassword(
+      data.password,
+      user.passwordHash,
+    );
+
+    if (!isPasswordValid) {
+      throw new Error("Invalid credentials");
+    }
+
+    const refreshToken = generateRefreshToken();
+
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+
+    const refreshTokenExpiresAt = new Date(
+      Date.now() +
+        Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30") *
+          24 *
+          60 *
+          60 *
+          1000,
+    );
+
+    const session = await this.authRepository.createSession({
+      userId: user.id,
+      refreshTokenHash,
+      expiresAt: refreshTokenExpiresAt,
+    });
+
+    const accessToken = await generateAccessToken({
+      userId: user.id,
+      sessionId: session.id,
+    });
+
+    return {
+      message: "Login successful",
+      accessToken,
+      refreshToken,
+    };
   }
-
-  if (user.status !== "ACTIVE") {
-    throw new Error("Account is not active");
-  }
-
-  if (!user.passwordHash) {
-    throw new Error("Password login is not available for this account");
-  }
-
-  const isPasswordValid = await verifyPassword(
-    data.password,
-    user.passwordHash,
-  );
-
-  if (!isPasswordValid) {
-    throw new Error("Invalid credentials");
-  }
-
-  return {
-    message: "Login successful",
-    userId: user.id,
-  };
-}
 }

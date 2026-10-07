@@ -4,7 +4,11 @@ import { or } from "@prisma/orm-postgres/orm-client";
 import { toInstant } from "../../shared/utils/temporal.js";
 
 import type { IAuthRepository } from "./auth.repository.interface.js";
-import type { OtpPurpose, UserRecord } from "./auth.types.js";
+import type {
+  OtpPurpose,
+  UserRecord,
+  UserSessionRecord,
+} from "./auth.types.js";
 
 export class AuthRepository implements IAuthRepository {
   async findUserByIdentifier(identifier: string) {
@@ -119,40 +123,64 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async completeSignupVerification(data: {
-  otpId: string;
-  identifier: string;
-  name: string;
-  email?: string | undefined;
-  phone?: string | undefined;
-  passwordHash: string;
-}): Promise<UserRecord> {
-  return await db.transaction(async (tx) => {
-    const user = await tx.orm.public.User.create({
-      name: data.name,
-      email: data.email ?? null,
-      phone: data.phone ?? null,
-      passwordHash: data.passwordHash,
-    });
+    otpId: string;
+    identifier: string;
+    name: string;
+    email?: string | undefined;
+    phone?: string | undefined;
+    passwordHash: string;
+  }): Promise<UserRecord> {
+    return await db.transaction(async (tx) => {
+      const user = await tx.orm.public.User.create({
+        name: data.name,
+        email: data.email ?? null,
+        phone: data.phone ?? null,
+        passwordHash: data.passwordHash,
+      });
 
-
-    await tx.orm.public.OtpVerification
-      .where({ id: data.otpId })
-      .updateAll({
+      await tx.orm.public.OtpVerification.where({ id: data.otpId }).updateAll({
         verifiedAt: toInstant(new Date()),
       });
 
-    await tx.orm.public.SignupAttempt
-      .where((attempt) =>
+      await tx.orm.public.SignupAttempt.where((attempt) =>
         or(
           attempt.email.eq(data.identifier),
           attempt.phone.eq(data.identifier),
         ),
-      )
-      .deleteAll();
+      ).deleteAll();
 
-    return user;
+      return user;
+    });
+  }
+  //refreshToken
 
-    
-  });
-}
+  async createSession(data: {
+    userId: string;
+    refreshTokenHash: string;
+    expiresAt: Date;
+  }): Promise<UserSessionRecord> {
+    return await db.orm.public.UserSession.create({
+      userId: data.userId,
+      refreshTokenHash: data.refreshTokenHash,
+      expiresAt: toInstant(data.expiresAt),
+    });
+  }
+
+  async findSessionByRefreshTokenHash(
+    refreshTokenHash: string,
+  ): Promise<UserSessionRecord | null> {
+    return await db.orm.public.UserSession.where({
+      refreshTokenHash,
+      revokedAt: null,
+    }).first();
+  }
+
+  async revokeSession(sessionId: string): Promise<void> {
+    await db.orm.public.UserSession.where({
+      id: sessionId,
+      revokedAt: null,
+    }).updateAll({
+      revokedAt: toInstant(new Date()),
+    });
+  }
 }
