@@ -1,6 +1,7 @@
 import type { Models } from "../../prisma/schema.js";
 import { db } from "../../prisma/db.js";
 import { or } from "@prisma/orm-postgres/orm-client";
+import { toInstant } from "../../shared/utils/temporal.js";
 
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import type { OtpPurpose } from "./auth.types.js";
@@ -14,12 +15,18 @@ export class AuthRepository implements IAuthRepository {
 
   async createSignupAttempt(data: {
     name: string;
-    email?: string;
-    phone?: string;
+    email?: string | undefined;
+    phone?: string | undefined;
     passwordHash: string;
     expiresAt: Date;
   }): Promise<Models.public_SignupAttempt> {
-    const signupAttempt = await db.orm.public.SignupAttempt.create(data);
+    const signupAttempt = await db.orm.public.SignupAttempt.create({
+      name: data.name,
+      email: data.email ?? null,
+      phone: data.phone ?? null,
+      passwordHash: data.passwordHash,
+      expiresAt: toInstant(data.expiresAt),
+    });
     return signupAttempt;
   }
 
@@ -32,7 +39,7 @@ export class AuthRepository implements IAuthRepository {
       purpose,
       verifiedAt: null,
     }).updateAll({
-      verifiedAt: new Date(),
+      verifiedAt: toInstant(new Date()),
     });
   }
 
@@ -42,6 +49,11 @@ export class AuthRepository implements IAuthRepository {
     purpose: OtpPurpose;
     expiresAt: Date;
   }): Promise<void> {
-    await db.orm.public.OtpVerification.create(data);
+    await db.orm.public.OtpVerification.create({
+      identifier: data.identifier,
+      otpHash: data.otpHash,
+      purpose: data.purpose,
+      expiresAt: toInstant(data.expiresAt),
+    });
   }
 }

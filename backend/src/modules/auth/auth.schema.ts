@@ -14,7 +14,7 @@ export const signupSchema = z
       .min(10, "min 10 digits required")
       .max(15, "Max 15 characters allowed")
       .optional(),
-    password: z.string().min(6).max(128),
+    password: z.string().min(8).max(128),
   })
   .refine((data) => Boolean(data.email || data.phone), {
     message: "Email or phone is required",

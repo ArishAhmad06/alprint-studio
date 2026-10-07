@@ -48,6 +48,7 @@ export class AuthService {
     const data = signupSchema.parse(input);
 
     const identifier = data.email ?? data.phone!;
+
     const existingUser =
       await this.authRepository.findUserByIdentifier(identifier);
 
@@ -56,7 +57,7 @@ export class AuthService {
     }
     const passwordHash = await hashPassword(data.password);
 
-    const signupAttempt = await this.authRepository.createSignupAttempt({
+    await this.authRepository.createSignupAttempt({
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -67,18 +68,16 @@ export class AuthService {
     const otp = generateOtp();
     const otpHash = hashOtp(otp); // use otphash in db
 
-    await this.otpProvider.sendOtp(identifier, otp);
-
-    //otp invalidation
     await this.authRepository.invalidatePreviousOtp(identifier, "SIGNUP");
 
-    //store on the db service
     await this.authRepository.createOtpVerification({
       identifier,
       otpHash,
       purpose: "SIGNUP",
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
+
+    await this.otpProvider.sendOtp(identifier, otp);
 
     return {
       message: "Otp sent successfully",

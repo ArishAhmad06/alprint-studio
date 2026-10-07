@@ -1,6 +1,10 @@
-// import express from "express";
-// import { registerUserSchema } from './auth.schema';
-// import { validate } from "zod";
+import { Router } from "express";
+import { AuthController } from "./auth.controller.js";
 
-// const router  = express.Router()
-// router.route("/register").post(validate(registerUserSchema), registerUserController);
+const router = Router();
+
+const authController = new AuthController();
+  
+router.route("/signup").post(authController.signup);
+
+export default router;
