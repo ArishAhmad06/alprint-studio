@@ -1,7 +1,6 @@
 import type { Models } from "../../prisma/schema.js";
 import type { OtpPurpose, UserRecord } from "./auth.types.js";
 
-
 export interface IAuthRepository {
   findUserByIdentifier(identifier: string): Promise<UserRecord | null>;
 
@@ -12,6 +11,19 @@ export interface IAuthRepository {
     passwordHash: string;
     expiresAt: Date;
   }): Promise<Models.public_SignupAttempt>;
+
+  findSignupAttemptByIdentifier(
+    identifier: string,
+  ): Promise<Models.public_SignupAttempt | null>;
+
+  findOtpVerification(
+    identifier: string,
+    purpose: OtpPurpose,
+  ): Promise<Models.public_OtpVerification | null>;
+
+  incrementOtpAttempts(otpId: string): Promise<void>;
+
+  markOtpVerified(otpId: string): Promise<void>;
 
   invalidatePreviousOtp(identifier: string, purpose: OtpPurpose): Promise<void>;
 
