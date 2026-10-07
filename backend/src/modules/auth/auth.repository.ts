@@ -117,4 +117,42 @@ export class AuthRepository implements IAuthRepository {
       or(attempt.email.eq(identifier), attempt.phone.eq(identifier)),
     ).deleteAll();
   }
+
+  async completeSignupVerification(data: {
+  otpId: string;
+  identifier: string;
+  name: string;
+  email?: string | undefined;
+  phone?: string | undefined;
+  passwordHash: string;
+}): Promise<UserRecord> {
+  return await db.transaction(async (tx) => {
+    const user = await tx.orm.public.User.create({
+      name: data.name,
+      email: data.email ?? null,
+      phone: data.phone ?? null,
+      passwordHash: data.passwordHash,
+    });
+
+
+    await tx.orm.public.OtpVerification
+      .where({ id: data.otpId })
+      .updateAll({
+        verifiedAt: toInstant(new Date()),
+      });
+
+    await tx.orm.public.SignupAttempt
+      .where((attempt) =>
+        or(
+          attempt.email.eq(data.identifier),
+          attempt.phone.eq(data.identifier),
+        ),
+      )
+      .deleteAll();
+
+    return user;
+
+    
+  });
+}
 }

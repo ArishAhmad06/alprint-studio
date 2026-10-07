@@ -97,17 +97,16 @@ export class AuthService {
       throw new Error("Signup attempt expired");
     }
 
-    const user = await this.authRepository.createUser({
+    const user = await this.authRepository.completeSignupVerification({
+      otpId: otpRecord.id,
+      identifier: data.identifier,
       name: signupAttempt.name,
       email: signupAttempt.email ?? undefined,
       phone: signupAttempt.phone ?? undefined,
       passwordHash: signupAttempt.passwordHash,
     });
 
-    await this.authRepository.markOtpAsVerified(otpRecord.id);
-
-    await this.authRepository.deleteSignupAttemptByIdentifier(data.identifier);
-
+    
     return {
       message: "Signup completed successfully",
       userId: user.id,

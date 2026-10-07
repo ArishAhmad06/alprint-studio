@@ -42,4 +42,13 @@ export interface IAuthRepository {
   }): Promise<UserRecord>;
 
   deleteSignupAttemptByIdentifier(identifier: string): Promise<void>;
+
+  completeSignupVerification(data: {
+  otpId: string;
+  identifier: string;
+  name: string;
+  email?: string | undefined;
+  phone?: string | undefined;
+  passwordHash: string;
+}): Promise<UserRecord>;
 }
