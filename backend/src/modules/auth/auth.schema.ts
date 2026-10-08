@@ -51,3 +51,25 @@ export const loginSchema = z
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, "Refresh token is required"),
 });
+
+//passwordless otp
+  export const requestLoginOtpSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email().optional(),
+    phone: phoneSchema.optional(),
+  })
+  .refine((data) => Boolean(data.email) !== Boolean(data.phone), {
+    message: "Provide either email or phone, not both",
+    path: ["email"],
+  });
+
+export const verifyLoginOtpSchema = z.object({
+  identifier: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((v) =>
+      v.includes("@") ? v.toLowerCase() : normalizePhone(v),
+    ),
+  otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
+});

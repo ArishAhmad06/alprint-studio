@@ -4,6 +4,7 @@ import {
   verifySignupOtpSchema,
   loginSchema,
   refreshTokenSchema,
+  requestLoginOtpSchema,
 } from "./auth.schema.js";
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import { hashPassword, verifyPassword } from "../../shared/utils/password.js";
@@ -193,6 +194,40 @@ export class AuthService {
       message: "Login successful",
       accessToken,
       refreshToken,
+    };
+  }
+
+  async requestLoginOtp(input: unknown) {
+    const data = requestLoginOtpSchema.parse(input);
+
+    const identifier = data.email ?? data.phone!;
+
+    const user = await this.authRepository.findUserByIdentifier(identifier);
+
+    if (!user) {
+      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
+    }
+
+    if (user.status !== "ACTIVE") {
+      throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
+    }
+
+    const otp = generateOtp();
+    const otpHash = hashOtp(otp);
+
+    await this.authRepository.invalidatePreviousOtp(identifier, "LOGIN");
+
+    await this.authRepository.createOtpVerification({
+      identifier,
+      otpHash,
+      purpose: "LOGIN",
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    await this.otpProvider.sendOtp(identifier, otp);
+
+    return {
+      message: "Otp sent successfully",
     };
   }
 

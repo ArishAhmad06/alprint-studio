@@ -76,4 +76,5 @@ export interface IAuthRepository {
   updateSessionLastUsedAt(sessionId: string): Promise<void>;
 
   revokeSession(sessionId: string): Promise<void>;
+
 }
