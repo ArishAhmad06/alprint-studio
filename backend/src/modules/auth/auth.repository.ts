@@ -50,6 +50,7 @@ export class AuthRepository implements IAuthRepository {
       identifier,
       purpose,
       verifiedAt: null,
+      invalidatedAt: null,
     }).first();
   }
 
@@ -83,8 +84,9 @@ export class AuthRepository implements IAuthRepository {
       identifier,
       purpose,
       verifiedAt: null,
+      invalidatedAt:null,
     }).updateAll({
-      verifiedAt: toInstant(new Date()),
+      invalidatedAt: toInstant(new Date()),
     });
   }
 
@@ -192,7 +194,6 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-
   async findSessionByRefreshTokenHash(
     refreshTokenHash: string,
   ): Promise<UserSessionRecord | null> {
@@ -219,6 +220,4 @@ export class AuthRepository implements IAuthRepository {
       revokedAt: toInstant(new Date()),
     });
   }
-
-
 }

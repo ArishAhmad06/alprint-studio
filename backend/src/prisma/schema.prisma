@@ -21,24 +21,24 @@ enum AuthProvider {
 }
 
 model User {
-  id           String                @id @default(uuid())
+  id           String               @id @default(uuid())
   name         String
-  email        String?               @unique
-  phone        String?               @unique
+  email        String?              @unique
+  phone        String?              @unique
   passwordHash String?
-  role         UserRole              @default(CUSTOMER)
-  status       UserStatus            @default(ACTIVE)
+  role         UserRole             @default(CUSTOMER)
+  status       UserStatus           @default(ACTIVE)
 
   sessions     UserSession[]
   addresses    Address[]
   identities   UserIdentity[]
 
-  createdAt    DateTime              @default(now())
+  createdAt    DateTime             @default(now())
   updatedAt    temporal.updatedAt()
 }
 
 model Address {
-  id           String                @id @default(uuid())
+  id           String               @id @default(uuid())
   userId       String
 
   fullName     String
@@ -50,57 +50,56 @@ model Address {
   pincode      String
   country      String
 
-  isDefault    Boolean               @default(false)
+  isDefault    Boolean              @default(false)
 
   user         User                 @relation(fields:[userId], references:[id], onDelete: Cascade)
 
-  createdAt    DateTime              @default(now())
+  createdAt    DateTime             @default(now())
   updatedAt    temporal.updatedAt()
 
   @@index([userId])
 }
 
 model UserSession {
-  id               String     @id @default(uuid())
+  id               String    @id @default(uuid())
   userId           String
 
-  refreshTokenHash String     @unique
+  refreshTokenHash String    @unique
   expiresAt        DateTime
   revokedAt        DateTime?
   lastUsedAt       DateTime?
 
   user             User      @relation(fields:[userId], references:[id], onDelete: Cascade)
 
-  createdAt        DateTime   @default(now())
+  createdAt        DateTime  @default(now())
 
   @@index([userId])
 }
 
 model OtpVerification {
-  id         String      @id @default(uuid())
-
-  identifier String
-  otpHash    String
-  purpose    OtpPurpose
-
-  expiresAt  DateTime
-  attempts   Int         @default(0)
-  verifiedAt DateTime?
-
-  createdAt  DateTime    @default(now())
+  id            String     @id @default(uuid())
+  identifier    String
+  otpHash       String
+  purpose       OtpPurpose
+  expiresAt     DateTime
+  attempts      Int        @default(0)
+  verifiedAt    DateTime?
+  invalidatedAt DateTime?
+  createdAt     DateTime   @default(now())
 
   @@index([identifier, purpose])
+  @@index([expiresAt])
 }
 
 model UserIdentity {
-  id                String                @id @default(uuid())
+  id                String               @id @default(uuid())
   userId            String
 
   provider          AuthProvider
   providerAccountId String
 
   user              User                 @relation(fields:[userId], references:[id], onDelete: Cascade)
-  createdAt         DateTime              @default(now())
+  createdAt         DateTime             @default(now())
   updatedAt         temporal.updatedAt()
 
   @@unique([provider, providerAccountId])
@@ -108,7 +107,7 @@ model UserIdentity {
 }
 
 model SignupAttempt {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
 
   name         String
   email        String?
@@ -116,7 +115,7 @@ model SignupAttempt {
   passwordHash String
 
   expiresAt    DateTime
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([email])
   @@index([phone])
@@ -143,12 +142,12 @@ enum ProductMediaType {
 }
 
 model Category {
-  id          String                 @id @default(uuid())
+  id          String                @id @default(uuid())
   name        String
-  slug        String                 @unique
+  slug        String                @unique
   description String?
-  status      CategoryStatus         @default(ACTIVE)
-  sortOrder   Int                    @default(0)
+  status      CategoryStatus        @default(ACTIVE)
+  sortOrder   Int                   @default(0)
 
   // self refrencing herarchy
   parentId    String?
@@ -157,7 +156,7 @@ model Category {
 
   products    ProductCategoryLink[]
 
-  createdAt   DateTime               @default(now())
+  createdAt   DateTime              @default(now())
   updatedAt   temporal.updatedAt()
 
   @@index([parentId])
@@ -165,14 +164,14 @@ model Category {
 }
 
 model Product {
-  id             String                 @id @default(uuid())
+  id             String                @id @default(uuid())
   name           String
-  slug           String                 @unique
+  slug           String                @unique
   description    String?
-  status         ProductStatus          @default(DRAFT)
+  status         ProductStatus         @default(DRAFT)
 
-  isCustomizable Boolean                @default(false)
-  sortOrder      Int                    @default(0)
+  isCustomizable Boolean               @default(false)
+  sortOrder      Int                   @default(0)
 
   categories     ProductCategoryLink[]
 
@@ -180,8 +179,9 @@ model Product {
   attributes     ProductAttribute[]
   media          ProductMedia[]
 
-  createdAt      DateTime               @default(now())
+  createdAt      DateTime              @default(now())
   updatedAt      temporal.updatedAt()
+
   @@index([status, sortOrder])
 }
 
@@ -197,45 +197,44 @@ model ProductCategoryLink {
 }
 
 model ProductVariant {
-  id                             String                @id @default(uuid())
-  productId                      String
+  id             String               @id @default(uuid())
+  productId      String
 
-  sku                            String                @unique
-  name                           String?
+  sku            String               @unique
+  name           String?
 
   price          Numeric(10, 2)
   compareAtPrice Numeric(10, 2)?
   weight         Numeric(10, 3)?
 
+  isActive       Boolean              @default(true)
+  sortOrder      Int                  @default(0)
 
-  isActive                       Boolean               @default(true)
-  sortOrder                      Int                   @default(0)
+  product        Product              @relation(fields:[productId], references:[id], onDelete: Cascade)
 
-  product                        Product              @relation(fields:[productId], references:[id], onDelete: Cascade)
+  attributes     VariantAttribute[]
 
-  attributes                     VariantAttribute[]
-
-  createdAt                      DateTime              @default(now())
-  updatedAt                      temporal.updatedAt()
+  createdAt      DateTime             @default(now())
+  updatedAt      temporal.updatedAt()
 
   @@index([productId])
   @@index([productId, isActive, sortOrder])
 }
 
 model Attribute {
-  id        String                @id @default(uuid())
+  id        String               @id @default(uuid())
 
   name      String
-  slug      String                @unique
+  slug      String               @unique
 
   values    AttributeValue[]
 
-  createdAt DateTime              @default(now())
+  createdAt DateTime             @default(now())
   updatedAt temporal.updatedAt()
 }
 
 model AttributeValue {
-  id           String                @id @default(uuid())
+  id           String               @id @default(uuid())
   attributeId  String
   value        String
   slug         String
@@ -245,7 +244,7 @@ model AttributeValue {
   variantLinks VariantAttribute[]
   media        ProductMedia[]
 
-  createdAt    DateTime              @default(now())
+  createdAt    DateTime             @default(now())
   updatedAt    temporal.updatedAt()
 
   @@unique([attributeId, slug])
@@ -253,7 +252,7 @@ model AttributeValue {
 }
 
 model ProductAttribute {
-  id               String          @id @default(uuid())
+  id               String         @id @default(uuid())
   productId        String
   attributeValueId String
 
@@ -266,7 +265,7 @@ model ProductAttribute {
 }
 
 model VariantAttribute {
-  id               String          @id @default(uuid())
+  id               String         @id @default(uuid())
   variantId        String
   attributeValueId String
 
@@ -279,21 +278,21 @@ model VariantAttribute {
 }
 
 model ProductMedia {
-  id               String                @id @default(uuid())
+  id               String               @id @default(uuid())
   productId        String
   attributeValueId String?
   type             ProductMediaType
   url              String
   storageKey       String?
   altText          String?
-  sortOrder        Int                   @default(0)
-  isPrimary        Boolean               @default(false)
+  sortOrder        Int                  @default(0)
+  isPrimary        Boolean              @default(false)
   metadata         Json?
 
   product          Product              @relation(fields:[productId], references:[id], onDelete: Cascade)
   attributeValue   AttributeValue?      @relation(fields:[attributeValueId], references:[id], onDelete: Cascade)
 
-  createdAt        DateTime              @default(now())
+  createdAt        DateTime             @default(now())
   updatedAt        temporal.updatedAt()
 
   @@index([productId, type])

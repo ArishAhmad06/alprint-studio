@@ -741,6 +741,13 @@
                   "kind": "scalar"
                 }
               },
+              "invalidatedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "otpHash": {
                 "nullable": false,
                 "type": {
@@ -786,6 +793,9 @@
                 },
                 "identifier": {
                   "column": "identifier"
+                },
+                "invalidatedAt": {
+                  "column": "invalidatedAt"
                 },
                 "otpHash": {
                   "column": "otpHash"
@@ -2362,6 +2372,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "invalidatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "otpHash": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -2386,6 +2401,14 @@
               },
               "foreignKeys": [],
               "indexes": [
+                {
+                  "columns": [
+                    "expiresAt"
+                  ],
+                  "name": "OtpVerification_expiresAt_idx_6b6b8c10",
+                  "prefix": "OtpVerification_expiresAt_idx",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "identifier",
@@ -3473,7 +3496,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "7bb539b94b45fe5d43f5f04e62d5dce83c08587ad76fee07aff5b1504db4f6c3"
+    "storageHash": "b697d8a88d5066ad95f934d218b424fad77f443f1eb431142c76f3927099ea4d"
   },
   "execution": {
     "executionHash": "479f59cf248e0bd3330d34fd4012234ce075fab7d9f2082a7d395ca357343dae",

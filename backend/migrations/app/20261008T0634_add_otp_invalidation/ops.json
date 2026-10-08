@@ -1,0 +1,83 @@
+[
+  {
+    "id": "column.public.OtpVerification.invalidatedAt",
+    "label": "Add column \"invalidatedAt\" to \"OtpVerification\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "invalidatedAt",
+        "table": "OtpVerification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"invalidatedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "OtpVerification",
+          "invalidatedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"invalidatedAt\"",
+        "sql": "ALTER TABLE \"public\".\"OtpVerification\" ADD COLUMN \"invalidatedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"invalidatedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "OtpVerification",
+          "invalidatedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OtpVerification.OtpVerification_expiresAt_idx_6b6b8c10",
+    "label": "Create index \"OtpVerification_expiresAt_idx_6b6b8c10\" on \"OtpVerification\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OtpVerification_expiresAt_idx_6b6b8c10",
+        "table": "OtpVerification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OtpVerification_expiresAt_idx_6b6b8c10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"OtpVerification_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OtpVerification_expiresAt_idx_6b6b8c10\"",
+        "sql": "CREATE INDEX \"OtpVerification_expiresAt_idx_6b6b8c10\" ON \"public\".\"OtpVerification\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OtpVerification_expiresAt_idx_6b6b8c10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"OtpVerification_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ]
+  }
+]
