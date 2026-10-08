@@ -39,6 +39,15 @@ export class AuthController {
     });
   };
 
+  verifyLoginOtp = async (req: Request, res: Response) => {
+    const result = await authService.verifyLoginOtp(req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  };
+
   refresh = async (req: Request, res: Response) => {
     const result = await authService.refresh(req.body);
 
