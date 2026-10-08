@@ -246,4 +246,8 @@ export class AuthService {
       refreshToken: newRefreshToken,
     };
   }
+
+  async logout(sessionId: string): Promise<void> {
+    await this.authRepository.revokeSession(sessionId);
+  }
 }

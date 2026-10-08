@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
 import { authService } from "../../infrastructure/container/index.js";
-import { success } from "zod";
 
 export class AuthController {
   signup = async (req: Request, res: Response) => {
@@ -37,6 +36,17 @@ export class AuthController {
     return res.status(200).json({
       success: true,
       data: result,
+    });
+  };
+
+  logout = async (req: Request, res: Response) => {
+    await authService.logout(req.auth.sessionId);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: "Logout successful",
+      },
     });
   };
 }
