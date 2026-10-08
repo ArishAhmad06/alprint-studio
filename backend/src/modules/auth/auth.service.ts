@@ -5,6 +5,7 @@ import {
   loginSchema,
   refreshTokenSchema,
   requestLoginOtpSchema,
+  verifyLoginOtpSchema,
 } from "./auth.schema.js";
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import { hashPassword, verifyPassword } from "../../shared/utils/password.js";
@@ -228,6 +229,84 @@ export class AuthService {
 
     return {
       message: "Otp sent successfully",
+    };
+  }
+
+  async verifyLoginOtp(input: unknown) {
+    const data = verifyLoginOtpSchema.parse(input);
+
+    const otpRecord = await this.authRepository.findOtpVerification(
+      data.identifier,
+      "LOGIN",
+    );
+
+    if (!otpRecord) {
+      throw new AppError(400, "OTP_NOT_FOUND", "OTP not found");
+    }
+
+    if (fromInstant(otpRecord.expiresAt) < new Date()) {
+      throw new AppError(400, "OTP_EXPIRED", "OTP expired");
+    }
+
+    if (otpRecord.attempts >= 5) {
+      throw new AppError(429, "OTP_ATTEMPTS_EXCEEDED", "Too many OTP attempts");
+    }
+
+    const submitted = Buffer.from(hashOtp(data.otp), "hex");
+
+    const stored = Buffer.from(otpRecord.otpHash, "hex");
+
+    const isValid =
+      submitted.length === stored.length &&
+      crypto.timingSafeEqual(submitted, stored);
+
+    if (!isValid) {
+      await this.authRepository.incrementOtpAttempts(otpRecord.id);
+
+      throw new AppError(400, "INVALID_OTP", "Invalid OTP");
+    }
+
+    const user = await this.authRepository.findUserByIdentifier(
+      data.identifier,
+    );
+
+    if (!user) {
+      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
+    }
+
+    if (user.status !== "ACTIVE") {
+      throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
+    }
+
+    await this.authRepository.markOtpAsVerified(otpRecord.id);
+
+    const refreshToken = generateRefreshToken();
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+
+    const refreshTokenExpiresAt = new Date(
+      Date.now() +
+        Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30") *
+          24 *
+          60 *
+          60 *
+          1000,
+    );
+
+    const session = await this.authRepository.createSession({
+      userId: user.id,
+      refreshTokenHash,
+      expiresAt: refreshTokenExpiresAt,
+    });
+
+    const accessToken = await generateAccessToken({
+      userId: user.id,
+      sessionId: session.id,
+    });
+
+    return {
+      message: "Login successful",
+      accessToken,
+      refreshToken,
     };
   }
 
