@@ -5,6 +5,7 @@ import logger from "./infrastructure/logger/index.js";
 import { notFoundHandler } from "./common/http/not-found.js";
 import { errorHandler } from "./common/http/error-handler.js";
 import authRouter from "./modules/auth/auth.router.js";
+import { errorMiddleware } from "./common/http/middlewares/error.middleware.js";
 
 const app = express();
 app.use(express.json());
