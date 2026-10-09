@@ -2,7 +2,6 @@ import type { Models } from "../../prisma/schema.js";
 import { db } from "../../prisma/db.js";
 import { or } from "@prisma/orm-postgres/orm-client";
 import { toInstant } from "../../shared/utils/temporal.js";
-
 import type { IAuthRepository } from "./auth.repository.interface.js";
 import type {
   OtpPurpose,
@@ -11,9 +10,14 @@ import type {
 } from "./auth.types.js";
 
 export class AuthRepository implements IAuthRepository {
-  async findUserByIdentifier(identifier: string) {
+  async findUserByIdentifier(
+    identifier: string,
+  ): Promise<UserRecord | null> {
     return await db.orm.public.User.where((user) =>
-      or(user.email.eq(identifier), user.phone.eq(identifier)),
+      or(
+        user.email.eq(identifier),
+        user.phone.eq(identifier),
+      ),
     ).first();
   }
 
@@ -24,21 +28,23 @@ export class AuthRepository implements IAuthRepository {
     passwordHash: string;
     expiresAt: Date;
   }): Promise<Models.public_SignupAttempt> {
-    const signupAttempt = await db.orm.public.SignupAttempt.create({
+    return await db.orm.public.SignupAttempt.create({
       name: data.name,
       email: data.email ?? null,
       phone: data.phone ?? null,
       passwordHash: data.passwordHash,
       expiresAt: toInstant(data.expiresAt),
     });
-    return signupAttempt;
   }
 
   async findSignupAttemptByIdentifier(
     identifier: string,
   ): Promise<Models.public_SignupAttempt | null> {
     return await db.orm.public.SignupAttempt.where((attempt) =>
-      or(attempt.email.eq(identifier), attempt.phone.eq(identifier)),
+      or(
+        attempt.email.eq(identifier),
+        attempt.phone.eq(identifier),
+      ),
     ).first();
   }
 
@@ -63,17 +69,23 @@ export class AuthRepository implements IAuthRepository {
       return;
     }
 
-    await db.orm.public.OtpVerification.where({ id: otpId }).updateAll({
+    await db.orm.public.OtpVerification.where({
+      id: otpId,
+    }).updateAll({
       attempts: otp.attempts + 1,
     });
   }
 
-  async markOtpAsVerified(otpId: string): Promise<void> {
-    await db.orm.public.OtpVerification.where({
+  async consumeOtp(otpId: string): Promise<boolean> {
+    const result = await db.orm.public.OtpVerification.where({
       id: otpId,
+      verifiedAt: null,
+      invalidatedAt: null,
     }).updateAll({
       verifiedAt: toInstant(new Date()),
     });
+
+    return result.length === 1;
   }
 
   async invalidatePreviousOtp(
@@ -84,7 +96,7 @@ export class AuthRepository implements IAuthRepository {
       identifier,
       purpose,
       verifiedAt: null,
-      invalidatedAt:null,
+      invalidatedAt: null,
     }).updateAll({
       invalidatedAt: toInstant(new Date()),
     });
@@ -118,9 +130,14 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-  async deleteSignupAttemptByIdentifier(identifier: string): Promise<void> {
+  async deleteSignupAttemptByIdentifier(
+    identifier: string,
+  ): Promise<void> {
     await db.orm.public.SignupAttempt.where((attempt) =>
-      or(attempt.email.eq(identifier), attempt.phone.eq(identifier)),
+      or(
+        attempt.email.eq(identifier),
+        attempt.phone.eq(identifier),
+      ),
     ).deleteAll();
   }
 
@@ -131,17 +148,27 @@ export class AuthRepository implements IAuthRepository {
     email?: string | undefined;
     phone?: string | undefined;
     passwordHash: string;
-  }): Promise<UserRecord> {
+  }): Promise<UserRecord | null> {
     return await db.transaction(async (tx) => {
+      const consumed = await tx.orm.public.OtpVerification
+        .where({
+          id: data.otpId,
+          verifiedAt: null,
+          invalidatedAt: null,
+        })
+        .updateAll({
+          verifiedAt: toInstant(new Date()),
+        });
+
+      if (consumed.length !== 1) {
+        return null;
+      }
+
       const user = await tx.orm.public.User.create({
         name: data.name,
         email: data.email ?? null,
         phone: data.phone ?? null,
         passwordHash: data.passwordHash,
-      });
-
-      await tx.orm.public.OtpVerification.where({ id: data.otpId }).updateAll({
-        verifiedAt: toInstant(new Date()),
       });
 
       await tx.orm.public.SignupAttempt.where((attempt) =>
@@ -154,7 +181,7 @@ export class AuthRepository implements IAuthRepository {
       return user;
     });
   }
-  //refreshToken
+
   async createSession(data: {
     userId: string;
     refreshTokenHash: string;
@@ -174,13 +201,15 @@ export class AuthRepository implements IAuthRepository {
     expiresAt: Date;
   }): Promise<UserSessionRecord | null> {
     return await db.transaction(async (tx) => {
-      const revokeResult = await tx.orm.public.UserSession.where({
-        id: data.sessionId,
-        userId: data.userId,
-        revokedAt: null,
-      }).updateAll({
-        revokedAt: toInstant(new Date()),
-      });
+      const revokeResult = await tx.orm.public.UserSession
+        .where({
+          id: data.sessionId,
+          userId: data.userId,
+          revokedAt: null,
+        })
+        .updateAll({
+          revokedAt: toInstant(new Date()),
+        });
 
       if (revokeResult.length !== 1) {
         return null;
@@ -203,7 +232,9 @@ export class AuthRepository implements IAuthRepository {
     }).first();
   }
 
-  async updateSessionLastUsedAt(sessionId: string): Promise<void> {
+  async updateSessionLastUsedAt(
+    sessionId: string,
+  ): Promise<void> {
     await db.orm.public.UserSession.where({
       id: sessionId,
       revokedAt: null,

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+
 import {
   signupSchema,
   verifySignupOtpSchema,
@@ -7,16 +8,23 @@ import {
   requestLoginOtpSchema,
   verifyLoginOtpSchema,
 } from "./auth.schema.js";
+
 import type { IAuthRepository } from "./auth.repository.interface.js";
+
 import { hashPassword, verifyPassword } from "../../shared/utils/password.js";
+
 import { generateOtp, hashOtp } from "../../shared/utils/otp.js";
+
 import { fromInstant } from "../../shared/utils/temporal.js";
+
 import type { IOtpProvider } from "../../infrastructure/otp/otp.provider.js";
+
 import {
   generateAccessToken,
   generateRefreshToken,
   hashRefreshToken,
 } from "../../shared/utils/token.js";
+
 import { AppError } from "../../common/http/errors/app-error.js";
 
 export class AuthService {
@@ -25,9 +33,24 @@ export class AuthService {
     private readonly otpProvider: IOtpProvider,
   ) {}
 
+  private verifyOtpHash(submittedOtp: string, storedOtpHash: string): boolean {
+    const submitted = Buffer.from(hashOtp(submittedOtp), "hex");
+    const stored = Buffer.from(storedOtpHash, "hex");
+
+    return (
+      submitted.length === stored.length &&
+      crypto.timingSafeEqual(submitted, stored)
+    );
+  }
+
+  private getRefreshTokenExpiry(): Date {
+    const days = Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30");
+
+    return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  }
+
   async signup(input: unknown) {
     const data = signupSchema.parse(input);
-
     const identifier = data.email ?? data.phone!;
 
     const existingUser =
@@ -50,13 +73,12 @@ export class AuthService {
     });
 
     const otp = generateOtp();
-    const otpHash = hashOtp(otp);
 
     await this.authRepository.invalidatePreviousOtp(identifier, "SIGNUP");
 
     await this.authRepository.createOtpVerification({
       identifier,
-      otpHash,
+      otpHash: hashOtp(otp),
       purpose: "SIGNUP",
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
@@ -80,7 +102,7 @@ export class AuthService {
       throw new AppError(400, "OTP_NOT_FOUND", "OTP not found");
     }
 
-    if (fromInstant(otpRecord.expiresAt) < new Date()) {
+    if (fromInstant(otpRecord.expiresAt) <= new Date()) {
       throw new AppError(400, "OTP_EXPIRED", "OTP expired");
     }
 
@@ -88,13 +110,7 @@ export class AuthService {
       throw new AppError(429, "OTP_ATTEMPTS_EXCEEDED", "Too many OTP attempts");
     }
 
-    const submitted = Buffer.from(hashOtp(data.otp), "hex");
-    const stored = Buffer.from(otpRecord.otpHash, "hex");
-    const isValid =
-      submitted.length === stored.length &&
-      crypto.timingSafeEqual(submitted, stored);
-
-    if (!isValid) {
+    if (!this.verifyOtpHash(data.otp, otpRecord.otpHash)) {
       await this.authRepository.incrementOtpAttempts(otpRecord.id);
 
       throw new AppError(400, "INVALID_OTP", "Invalid OTP");
@@ -111,7 +127,7 @@ export class AuthService {
       );
     }
 
-    if (fromInstant(signupAttempt.expiresAt) < new Date()) {
+    if (fromInstant(signupAttempt.expiresAt) <= new Date()) {
       throw new AppError(
         400,
         "SIGNUP_ATTEMPT_EXPIRED",
@@ -128,16 +144,22 @@ export class AuthService {
       passwordHash: signupAttempt.passwordHash,
     });
 
+    if (!user) {
+      throw new AppError(
+        400,
+        "OTP_ALREADY_USED",
+        "OTP is invalid or has already been used",
+      );
+    }
+
     return {
       message: "Signup completed successfully",
       userId: user.id,
     };
   }
 
-  // login service
   async login(input: unknown) {
     const data = loginSchema.parse(input);
-
     const identifier = data.email ?? data.phone!;
 
     const user = await this.authRepository.findUserByIdentifier(identifier);
@@ -168,22 +190,12 @@ export class AuthService {
     }
 
     const refreshToken = generateRefreshToken();
-
     const refreshTokenHash = hashRefreshToken(refreshToken);
-
-    const refreshTokenExpiresAt = new Date(
-      Date.now() +
-        Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30") *
-          24 *
-          60 *
-          60 *
-          1000,
-    );
 
     const session = await this.authRepository.createSession({
       userId: user.id,
       refreshTokenHash,
-      expiresAt: refreshTokenExpiresAt,
+      expiresAt: this.getRefreshTokenExpiry(),
     });
 
     const accessToken = await generateAccessToken({
@@ -200,7 +212,6 @@ export class AuthService {
 
   async requestLoginOtp(input: unknown) {
     const data = requestLoginOtpSchema.parse(input);
-
     const identifier = data.email ?? data.phone!;
 
     const user = await this.authRepository.findUserByIdentifier(identifier);
@@ -214,13 +225,12 @@ export class AuthService {
     }
 
     const otp = generateOtp();
-    const otpHash = hashOtp(otp);
 
     await this.authRepository.invalidatePreviousOtp(identifier, "LOGIN");
 
     await this.authRepository.createOtpVerification({
       identifier,
-      otpHash,
+      otpHash: hashOtp(otp),
       purpose: "LOGIN",
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
@@ -244,7 +254,7 @@ export class AuthService {
       throw new AppError(400, "OTP_NOT_FOUND", "OTP not found");
     }
 
-    if (fromInstant(otpRecord.expiresAt) < new Date()) {
+    if (fromInstant(otpRecord.expiresAt) <= new Date()) {
       throw new AppError(400, "OTP_EXPIRED", "OTP expired");
     }
 
@@ -252,15 +262,7 @@ export class AuthService {
       throw new AppError(429, "OTP_ATTEMPTS_EXCEEDED", "Too many OTP attempts");
     }
 
-    const submitted = Buffer.from(hashOtp(data.otp), "hex");
-
-    const stored = Buffer.from(otpRecord.otpHash, "hex");
-
-    const isValid =
-      submitted.length === stored.length &&
-      crypto.timingSafeEqual(submitted, stored);
-
-    if (!isValid) {
+    if (!this.verifyOtpHash(data.otp, otpRecord.otpHash)) {
       await this.authRepository.incrementOtpAttempts(otpRecord.id);
 
       throw new AppError(400, "INVALID_OTP", "Invalid OTP");
@@ -278,24 +280,24 @@ export class AuthService {
       throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
     }
 
-    await this.authRepository.markOtpAsVerified(otpRecord.id);
+    // Atomically attempt to consume the OTP before creating a session.
+    const consumed = await this.authRepository.consumeOtp(otpRecord.id);
+
+    if (!consumed) {
+      throw new AppError(
+        400,
+        "OTP_ALREADY_USED",
+        "OTP is invalid or has already been used",
+      );
+    }
 
     const refreshToken = generateRefreshToken();
     const refreshTokenHash = hashRefreshToken(refreshToken);
 
-    const refreshTokenExpiresAt = new Date(
-      Date.now() +
-        Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30") *
-          24 *
-          60 *
-          60 *
-          1000,
-    );
-
     const session = await this.authRepository.createSession({
       userId: user.id,
       refreshTokenHash,
-      expiresAt: refreshTokenExpiresAt,
+      expiresAt: this.getRefreshTokenExpiry(),
     });
 
     const accessToken = await generateAccessToken({
@@ -312,7 +314,6 @@ export class AuthService {
 
   async refresh(input: unknown) {
     const data = refreshTokenSchema.parse(input);
-
     const refreshTokenHash = hashRefreshToken(data.refreshToken);
 
     const session =
@@ -322,28 +323,18 @@ export class AuthService {
       throw new AppError(401, "INVALID_REFRESH_TOKEN", "Invalid refresh token");
     }
 
-    if (fromInstant(session.expiresAt) < new Date()) {
+    if (fromInstant(session.expiresAt) <= new Date()) {
       throw new AppError(401, "REFRESH_TOKEN_EXPIRED", "Refresh token expired");
     }
 
     const newRefreshToken = generateRefreshToken();
-
     const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
-
-    const newRefreshTokenExpiresAt = new Date(
-      Date.now() +
-        Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30") *
-          24 *
-          60 *
-          60 *
-          1000,
-    );
 
     const newSession = await this.authRepository.rotateRefreshSession({
       sessionId: session.id,
       userId: session.userId,
       refreshTokenHash: newRefreshTokenHash,
-      expiresAt: newRefreshTokenExpiresAt,
+      expiresAt: this.getRefreshTokenExpiry(),
     });
 
     if (!newSession) {

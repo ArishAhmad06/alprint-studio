@@ -27,7 +27,7 @@ export interface IAuthRepository {
 
   incrementOtpAttempts(otpId: string): Promise<void>;
 
-  markOtpAsVerified(otpId: string): Promise<void>;
+  consumeOtp(otpId: string): Promise<boolean>;
 
   invalidatePreviousOtp(identifier: string, purpose: OtpPurpose): Promise<void>;
 
@@ -54,17 +54,13 @@ export interface IAuthRepository {
     email?: string | undefined;
     phone?: string | undefined;
     passwordHash: string;
-  }): Promise<UserRecord>;
+  }): Promise<UserRecord | null>;
 
   createSession(data: {
     userId: string;
     refreshTokenHash: string;
     expiresAt: Date;
   }): Promise<UserSessionRecord>;
-
-  findSessionByRefreshTokenHash(
-    refreshTokenHash: string,
-  ): Promise<UserSessionRecord | null>;
 
   rotateRefreshSession(data: {
     sessionId: string;
@@ -73,8 +69,11 @@ export interface IAuthRepository {
     expiresAt: Date;
   }): Promise<UserSessionRecord | null>;
 
+  findSessionByRefreshTokenHash(
+    refreshTokenHash: string,
+  ): Promise<UserSessionRecord | null>;
+
   updateSessionLastUsedAt(sessionId: string): Promise<void>;
 
   revokeSession(sessionId: string): Promise<void>;
-
 }
