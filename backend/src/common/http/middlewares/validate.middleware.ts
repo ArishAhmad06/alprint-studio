@@ -26,6 +26,7 @@ export const validateBody = (schema: ZodType) => {
   };
 };
 
+
 // Params are already strings, so this only validates; it does not replace them.
 export const validateParams = (schema: ZodType) => {
   return (req: Request, _res: Response, next: NextFunction): void => {
