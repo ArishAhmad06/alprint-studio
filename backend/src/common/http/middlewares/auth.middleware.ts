@@ -32,10 +32,13 @@ export const authenticate = async (
     if (typeof payload.sub !== "string" || typeof payload.sid !== "string") {
       throw new AppError(401, "INVALID_ACCESS_TOKEN", "Invalid access token");
     }
+    
+    const { role } = await authService.validateAccessSession(
+      payload.sub,
+      payload.sid,
+    );
 
-    await authService.validateAccessSession(payload.sub, payload.sid);
-
-    req.auth = { userId: payload.sub, sessionId: payload.sid };
+    req.auth = { userId: payload.sub, sessionId: payload.sid, role };
 
     next();
   } catch (error) {
