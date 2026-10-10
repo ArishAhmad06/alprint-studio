@@ -56,20 +56,21 @@ export class AuthRepository implements IAuthRepository {
     }).first();
   }
 
-  async incrementOtpAttempts(otpId: string): Promise<void> {
-    const otp = await db.orm.public.OtpVerification.where({
+  async claimOtpAttempt(
+    otpId: string,
+    currentAttempts: number,
+  ): Promise<boolean> {
+    // Only one concurrent request can move attempts from N to N+1.
+    const result = await db.orm.public.OtpVerification.where({
       id: otpId,
-    }).first();
-
-    if (!otp) {
-      return;
-    }
-
-    await db.orm.public.OtpVerification.where({
-      id: otpId,
+      attempts: currentAttempts,
+      verifiedAt: null,
+      invalidatedAt: null,
     }).updateAll({
-      attempts: otp.attempts + 1,
+      attempts: currentAttempts + 1,
     });
+
+    return result.length === 1;
   }
 
   async consumeOtp(otpId: string): Promise<boolean> {
@@ -245,7 +246,6 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-  
   async revokeAllUserSessions(userId: string): Promise<void> {
     await db.orm.public.UserSession.where({
       userId,

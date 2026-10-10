@@ -27,8 +27,8 @@ export interface IAuthRepository {
     purpose: OtpPurpose,
   ): Promise<Models.public_OtpVerification | null>;
 
-  incrementOtpAttempts(otpId: string): Promise<void>;
-
+  claimOtpAttempt(otpId: string, currentAttempts: number): Promise<boolean>;
+  
   consumeOtp(otpId: string): Promise<boolean>;
 
   invalidatePreviousOtp(identifier: string, purpose: OtpPurpose): Promise<void>;
@@ -74,7 +74,7 @@ export interface IAuthRepository {
   findSessionByRefreshTokenHash(
     refreshTokenHash: string,
   ): Promise<UserSessionRecord | null>;
-  
+
   findActiveSessionById(sessionId: string): Promise<UserSessionRecord | null>;
 
   updateSessionLastUsedAt(sessionId: string): Promise<void>;

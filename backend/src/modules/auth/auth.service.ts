@@ -19,6 +19,7 @@ import { generateOtp, hashOtp } from "../../shared/utils/otp.js";
 import { fromInstant } from "../../shared/utils/temporal.js";
 
 import type { IOtpProvider } from "../../infrastructure/otp/otp.provider.js";
+import type { OtpPurpose } from "./auth.types.js";
 
 import {
   generateAccessToken,
@@ -29,6 +30,8 @@ import {
 import { AppError } from "../../common/http/errors/app-error.js";
 
 const REFRESH_REUSE_GRACE_MS = 10_000;
+const MAX_OTP_ATTEMPTS = 5;
+const OTP_RESEND_COOLDOWN_MS = 60_000;
 
 export class AuthService {
   constructor(
@@ -52,6 +55,44 @@ export class AuthService {
     );
   }
 
+  private async claimOtpAttempt(otpRecord: {
+    id: string;
+    attempts: number;
+  }): Promise<void> {
+    if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
+      throw new AppError(429, "OTP_ATTEMPTS_EXCEEDED", "Too many OTP attempts");
+    }
+
+    const claimed = await this.authRepository.claimOtpAttempt(
+      otpRecord.id,
+      otpRecord.attempts,
+    );
+
+    if (!claimed) {
+      throw new AppError(
+        429,
+        "OTP_ATTEMPT_CONFLICT",
+        "Too many simultaneous attempts, please try again",
+      );
+    }
+  }
+
+  private async isOtpCoolingDown(
+    identifier: string,
+    purpose: OtpPurpose,
+  ): Promise<boolean> {
+    const active = await this.authRepository.findOtpVerification(
+      identifier,
+      purpose,
+    );
+
+    return (
+      active !== null &&
+      Date.now() - fromInstant(active.createdAt).getTime() <
+        OTP_RESEND_COOLDOWN_MS
+    );
+  }
+
   async signup(input: unknown) {
     const data = signupSchema.parse(input);
     const identifier = data.email ?? data.phone!;
@@ -61,6 +102,14 @@ export class AuthService {
 
     if (existingUser) {
       throw new AppError(409, "USER_ALREADY_EXISTS", "User already exists");
+    }
+
+    if (await this.isOtpCoolingDown(identifier, "SIGNUP")) {
+      throw new AppError(
+        429,
+        "OTP_COOLDOWN",
+        "Please wait a minute before requesting another OTP",
+      );
     }
 
     const passwordHash = await hashPassword(data.password);
@@ -109,13 +158,9 @@ export class AuthService {
       throw new AppError(400, "OTP_EXPIRED", "OTP expired");
     }
 
-    if (otpRecord.attempts >= 5) {
-      throw new AppError(429, "OTP_ATTEMPTS_EXCEEDED", "Too many OTP attempts");
-    }
+    await this.claimOtpAttempt(otpRecord);
 
     if (!this.verifyOtpHash(data.otp, otpRecord.otpHash)) {
-      await this.authRepository.incrementOtpAttempts(otpRecord.id);
-
       throw new AppError(400, "INVALID_OTP", "Invalid OTP");
     }
 
@@ -167,29 +212,18 @@ export class AuthService {
 
     const user = await this.authRepository.findUserByIdentifier(identifier);
 
-    if (!user) {
+    // Always runs a bcrypt compare, even for unknown users, to keep timing equal.
+    const isPasswordValid = await verifyPassword(
+      data.password,
+      user?.passwordHash ?? null,
+    );
+
+    if (!user || !isPasswordValid) {
       throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     if (user.status !== "ACTIVE") {
       throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
-    }
-
-    if (!user.passwordHash) {
-      throw new AppError(
-        400,
-        "PASSWORD_LOGIN_UNAVAILABLE",
-        "Password login is not available for this account",
-      );
-    }
-
-    const isPasswordValid = await verifyPassword(
-      data.password,
-      user.passwordHash,
-    );
-
-    if (!isPasswordValid) {
-      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     const refreshToken = generateRefreshToken();
@@ -217,14 +251,20 @@ export class AuthService {
     const data = requestLoginOtpSchema.parse(input);
     const identifier = data.email ?? data.phone!;
 
+    // Same response whether or not the account exists.
+    const response = {
+      message: "If an account exists, an OTP has been sent",
+    };
+
     const user = await this.authRepository.findUserByIdentifier(identifier);
 
-    if (!user) {
-      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
+    if (!user || user.status !== "ACTIVE") {
+      return response;
     }
 
-    if (user.status !== "ACTIVE") {
-      throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
+    // Cooling down returns the same response too, so repeating the request reveals nothing.
+    if (await this.isOtpCoolingDown(identifier, "LOGIN")) {
+      return response;
     }
 
     const otp = generateOtp();
@@ -240,9 +280,7 @@ export class AuthService {
 
     await this.otpProvider.sendOtp(identifier, otp);
 
-    return {
-      message: "Otp sent successfully",
-    };
+    return response;
   }
 
   async verifyLoginOtp(input: unknown) {
@@ -261,13 +299,9 @@ export class AuthService {
       throw new AppError(400, "OTP_EXPIRED", "OTP expired");
     }
 
-    if (otpRecord.attempts >= 5) {
-      throw new AppError(429, "OTP_ATTEMPTS_EXCEEDED", "Too many OTP attempts");
-    }
+    await this.claimOtpAttempt(otpRecord);
 
     if (!this.verifyOtpHash(data.otp, otpRecord.otpHash)) {
-      await this.authRepository.incrementOtpAttempts(otpRecord.id);
-
       throw new AppError(400, "INVALID_OTP", "Invalid OTP");
     }
 
