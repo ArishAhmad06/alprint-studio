@@ -4,14 +4,22 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]),
   PORT: z.coerce.number().int().positive(),
+  DATABASE_URL: z.string().min(1),
+  FRONTEND_URL: z.string().url().optional(),
+  JWT_ACCESS_TOKEN_SECRET: z.string().min(32),
+  JWT_ACCESS_TOKEN_EXPIRY: z
+    .string()
+    .regex(/^\d+[smhd]$/, "Use a value like 15m")
+    .default("15m"),
+  JWT_REFRESH_TOKEN_EXPIRY: z.coerce.number().int().positive().default(30), // days
+  OTP_SECRET: z.string().min(32),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
-  console.error("Invalid environmnet variables:");
+  console.error("Invalid environment variables:");
   console.error(parsedEnv.error.format());
-
   process.exit(1);
 }
 

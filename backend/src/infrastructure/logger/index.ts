@@ -3,6 +3,14 @@ import { env } from "../../config/env.js";
 
 const logger = pino({
   level: env.NODE_ENV === "production" ? "info" : "debug",
+  redact: {
+    paths: [
+      "req.headers.authorization",
+      "req.headers.cookie",
+      'res.headers["set-cookie"]',
+    ],
+    censor: "[REDACTED]",
+  },
 });
 
 export default logger;

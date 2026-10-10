@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { env } from "../../config/env.js";
 
 import {
   signupSchema,
@@ -44,10 +45,10 @@ export class AuthService {
   }
 
   private getRefreshTokenExpiry(): Date {
-    const days = Number(process.env["JWT_REFRESH_TOKEN_EXPIRY"] ?? "30");
-
-    return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-  }
+  return new Date(
+    Date.now() + env.JWT_REFRESH_TOKEN_EXPIRY * 24 * 60 * 60 * 1000,
+  );
+}
 
   async signup(input: unknown) {
     const data = signupSchema.parse(input);

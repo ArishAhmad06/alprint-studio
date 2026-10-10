@@ -1,25 +1,18 @@
 import crypto from "node:crypto";
 import { SignJWT } from "jose";
+import { env } from "../../config/env.js";
 
-const accessTokenSecret = process.env["JWT_ACCESS_TOKEN_SECRET"];
-
-if (!accessTokenSecret) {
-  throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured");
-}
-
-const secret = new TextEncoder().encode(accessTokenSecret);
+const secret = new TextEncoder().encode(env.JWT_ACCESS_TOKEN_SECRET);
 
 export async function generateAccessToken(data: {
   userId: string;
   sessionId: string;
 }): Promise<string> {
-  return await new SignJWT({
-    sid: data.sessionId,
-  })
+  return await new SignJWT({ sid: data.sessionId })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(data.userId)
     .setIssuedAt()
-    .setExpirationTime("15m")
+    .setExpirationTime(env.JWT_ACCESS_TOKEN_EXPIRY)
     .sign(secret);
 }
 
@@ -28,8 +21,5 @@ export function generateRefreshToken(): string {
 }
 
 export function hashRefreshToken(token: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(token)
-    .digest("hex");
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
