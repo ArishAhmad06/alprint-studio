@@ -28,6 +28,8 @@ import {
 
 import { AppError } from "../../common/http/errors/app-error.js";
 
+const REFRESH_REUSE_GRACE_MS = 10_000;
+
 export class AuthService {
   constructor(
     private readonly authRepository: IAuthRepository,
@@ -45,10 +47,10 @@ export class AuthService {
   }
 
   private getRefreshTokenExpiry(): Date {
-  return new Date(
-    Date.now() + env.JWT_REFRESH_TOKEN_EXPIRY * 24 * 60 * 60 * 1000,
-  );
-}
+    return new Date(
+      Date.now() + env.JWT_REFRESH_TOKEN_EXPIRY * 24 * 60 * 60 * 1000,
+    );
+  }
 
   async signup(input: unknown) {
     const data = signupSchema.parse(input);
@@ -324,8 +326,28 @@ export class AuthService {
       throw new AppError(401, "INVALID_REFRESH_TOKEN", "Invalid refresh token");
     }
 
+    if (session.revokedAt) {
+      // An already-rotated or logged-out token is being used again.
+      // After the grace window, assume it was stolen and end every session.
+      const revokedMsAgo =
+        Date.now() - fromInstant(session.revokedAt).getTime();
+
+      if (revokedMsAgo > REFRESH_REUSE_GRACE_MS) {
+        await this.authRepository.revokeAllUserSessions(session.userId);
+      }
+
+      throw new AppError(401, "INVALID_REFRESH_TOKEN", "Invalid refresh token");
+    }
+
     if (fromInstant(session.expiresAt) <= new Date()) {
       throw new AppError(401, "REFRESH_TOKEN_EXPIRED", "Refresh token expired");
+    }
+
+    const user = await this.authRepository.findUserById(session.userId);
+
+    if (!user || user.status !== "ACTIVE") {
+      await this.authRepository.revokeAllUserSessions(session.userId);
+      throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
     }
 
     const newRefreshToken = generateRefreshToken();
@@ -351,6 +373,31 @@ export class AuthService {
       accessToken,
       refreshToken: newRefreshToken,
     };
+  }
+
+  async validateAccessSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const session = await this.authRepository.findActiveSessionById(sessionId);
+
+    if (
+      !session ||
+      session.userId !== userId ||
+      fromInstant(session.expiresAt) <= new Date()
+    ) {
+      throw new AppError(
+        401,
+        "SESSION_EXPIRED",
+        "Session expired, please log in again",
+      );
+    }
+
+    const user = await this.authRepository.findUserById(userId);
+
+    if (!user || user.status !== "ACTIVE") {
+      throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
+    }
   }
 
   async logout(sessionId: string): Promise<void> {

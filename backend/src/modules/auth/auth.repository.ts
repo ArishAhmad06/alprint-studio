@@ -10,15 +10,14 @@ import type {
 } from "./auth.types.js";
 
 export class AuthRepository implements IAuthRepository {
-  async findUserByIdentifier(
-    identifier: string,
-  ): Promise<UserRecord | null> {
+  async findUserByIdentifier(identifier: string): Promise<UserRecord | null> {
     return await db.orm.public.User.where((user) =>
-      or(
-        user.email.eq(identifier),
-        user.phone.eq(identifier),
-      ),
+      or(user.email.eq(identifier), user.phone.eq(identifier)),
     ).first();
+  }
+
+  async findUserById(id: string): Promise<UserRecord | null> {
+    return await db.orm.public.User.where({ id }).first();
   }
 
   async createSignupAttempt(data: {
@@ -41,10 +40,7 @@ export class AuthRepository implements IAuthRepository {
     identifier: string,
   ): Promise<Models.public_SignupAttempt | null> {
     return await db.orm.public.SignupAttempt.where((attempt) =>
-      or(
-        attempt.email.eq(identifier),
-        attempt.phone.eq(identifier),
-      ),
+      or(attempt.email.eq(identifier), attempt.phone.eq(identifier)),
     ).first();
   }
 
@@ -130,14 +126,9 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-  async deleteSignupAttemptByIdentifier(
-    identifier: string,
-  ): Promise<void> {
+  async deleteSignupAttemptByIdentifier(identifier: string): Promise<void> {
     await db.orm.public.SignupAttempt.where((attempt) =>
-      or(
-        attempt.email.eq(identifier),
-        attempt.phone.eq(identifier),
-      ),
+      or(attempt.email.eq(identifier), attempt.phone.eq(identifier)),
     ).deleteAll();
   }
 
@@ -150,15 +141,13 @@ export class AuthRepository implements IAuthRepository {
     passwordHash: string;
   }): Promise<UserRecord | null> {
     return await db.transaction(async (tx) => {
-      const consumed = await tx.orm.public.OtpVerification
-        .where({
-          id: data.otpId,
-          verifiedAt: null,
-          invalidatedAt: null,
-        })
-        .updateAll({
-          verifiedAt: toInstant(new Date()),
-        });
+      const consumed = await tx.orm.public.OtpVerification.where({
+        id: data.otpId,
+        verifiedAt: null,
+        invalidatedAt: null,
+      }).updateAll({
+        verifiedAt: toInstant(new Date()),
+      });
 
       if (consumed.length !== 1) {
         return null;
@@ -201,15 +190,13 @@ export class AuthRepository implements IAuthRepository {
     expiresAt: Date;
   }): Promise<UserSessionRecord | null> {
     return await db.transaction(async (tx) => {
-      const revokeResult = await tx.orm.public.UserSession
-        .where({
-          id: data.sessionId,
-          userId: data.userId,
-          revokedAt: null,
-        })
-        .updateAll({
-          revokedAt: toInstant(new Date()),
-        });
+      const revokeResult = await tx.orm.public.UserSession.where({
+        id: data.sessionId,
+        userId: data.userId,
+        revokedAt: null,
+      }).updateAll({
+        revokedAt: toInstant(new Date()),
+      });
 
       if (revokeResult.length !== 1) {
         return null;
@@ -228,13 +215,19 @@ export class AuthRepository implements IAuthRepository {
   ): Promise<UserSessionRecord | null> {
     return await db.orm.public.UserSession.where({
       refreshTokenHash,
+    }).first();
+  }
+
+  async findActiveSessionById(
+    sessionId: string,
+  ): Promise<UserSessionRecord | null> {
+    return await db.orm.public.UserSession.where({
+      id: sessionId,
       revokedAt: null,
     }).first();
   }
 
-  async updateSessionLastUsedAt(
-    sessionId: string,
-  ): Promise<void> {
+  async updateSessionLastUsedAt(sessionId: string): Promise<void> {
     await db.orm.public.UserSession.where({
       id: sessionId,
       revokedAt: null,
@@ -246,6 +239,16 @@ export class AuthRepository implements IAuthRepository {
   async revokeSession(sessionId: string): Promise<void> {
     await db.orm.public.UserSession.where({
       id: sessionId,
+      revokedAt: null,
+    }).updateAll({
+      revokedAt: toInstant(new Date()),
+    });
+  }
+
+  
+  async revokeAllUserSessions(userId: string): Promise<void> {
+    await db.orm.public.UserSession.where({
+      userId,
       revokedAt: null,
     }).updateAll({
       revokedAt: toInstant(new Date()),

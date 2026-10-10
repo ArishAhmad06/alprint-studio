@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { jwtVerify, errors } from "jose";
 import { AppError } from "../errors/app-error.js";
 import { env } from "../../../config/env.js";
+import { authService } from "../../../infrastructure/container/index.js";
 
 const secret = new TextEncoder().encode(env.JWT_ACCESS_TOKEN_SECRET);
 
@@ -31,6 +32,8 @@ export const authenticate = async (
     if (typeof payload.sub !== "string" || typeof payload.sid !== "string") {
       throw new AppError(401, "INVALID_ACCESS_TOKEN", "Invalid access token");
     }
+
+    await authService.validateAccessSession(payload.sub, payload.sid);
 
     req.auth = { userId: payload.sub, sessionId: payload.sid };
 

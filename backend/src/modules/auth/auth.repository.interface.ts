@@ -8,6 +8,8 @@ import type {
 export interface IAuthRepository {
   findUserByIdentifier(identifier: string): Promise<UserRecord | null>;
 
+  findUserById(id: string): Promise<UserRecord | null>;
+
   createSignupAttempt(data: {
     name: string;
     email?: string | undefined;
@@ -72,8 +74,12 @@ export interface IAuthRepository {
   findSessionByRefreshTokenHash(
     refreshTokenHash: string,
   ): Promise<UserSessionRecord | null>;
+  
+  findActiveSessionById(sessionId: string): Promise<UserSessionRecord | null>;
 
   updateSessionLastUsedAt(sessionId: string): Promise<void>;
 
   revokeSession(sessionId: string): Promise<void>;
+
+  revokeAllUserSessions(userId: string): Promise<void>;
 }
