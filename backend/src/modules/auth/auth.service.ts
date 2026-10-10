@@ -412,7 +412,7 @@ export class AuthService {
   async validateAccessSession(
     userId: string,
     sessionId: string,
-  ): Promise<void> {
+  ): Promise<{ role: "CUSTOMER" | "OWNER" }> {
     const session = await this.authRepository.findActiveSessionById(sessionId);
 
     if (
@@ -432,6 +432,7 @@ export class AuthService {
     if (!user || user.status !== "ACTIVE") {
       throw new AppError(403, "ACCOUNT_NOT_ACTIVE", "Account is not active");
     }
+    return { role: user.role };
   }
 
   async logout(sessionId: string): Promise<void> {
