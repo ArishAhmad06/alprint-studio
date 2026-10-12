@@ -48,3 +48,25 @@ export const validateParams = (schema: ZodType) => {
     next();
   };
 };
+
+// Express 5 makes `req.query` read-only, so the parsed (coerced, defaulted)
+// query is stored on `res.locals.query` for the controller to read.
+export const validateQuery = (schema: ZodType) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const result = schema.safeParse(req.query);
+
+    if (!result.success) {
+      next(
+        new AppError(
+          400,
+          "VALIDATION_ERROR",
+          formatIssues(result.error.issues),
+        ),
+      );
+      return;
+    }
+
+    res.locals["query"] = result.data;
+    next();
+  };
+};
