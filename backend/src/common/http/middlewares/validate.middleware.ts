@@ -16,7 +16,11 @@ export const validateBody = (schema: ZodType) => {
 
     if (!result.success) {
       next(
-        new AppError(400, "VALIDATION_ERROR", formatIssues(result.error.issues)),
+        new AppError(
+          400,
+          "VALIDATION_ERROR",
+          formatIssues(result.error.issues),
+        ),
       );
       return;
     }
@@ -25,8 +29,6 @@ export const validateBody = (schema: ZodType) => {
     next();
   };
 };
-
-
 // Params are already strings, so this only validates; it does not replace them.
 export const validateParams = (schema: ZodType) => {
   return (req: Request, _res: Response, next: NextFunction): void => {
@@ -34,7 +36,11 @@ export const validateParams = (schema: ZodType) => {
 
     if (!result.success) {
       next(
-        new AppError(400, "VALIDATION_ERROR", formatIssues(result.error.issues)),
+        new AppError(
+          400,
+          "VALIDATION_ERROR",
+          formatIssues(result.error.issues),
+        ),
       );
       return;
     }
