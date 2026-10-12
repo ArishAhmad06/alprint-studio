@@ -10,10 +10,17 @@ import logger from "./infrastructure/logger/index.js";
 import { notFoundHandler } from "./common/http/not-found.js";
 import { errorHandler } from "./common/http/error-handler.js";
 import authRouter from "./modules/auth/auth.router.js";
+
+import {
+  productRouter,
+  adminProductRouter,
+} from "./modules/product/product.router.js";
+
 import {
   adminCategoryRouter,
   categoryRouter,
-} from "./modules/catalog/category.router.js";
+} from "./modules/category/category.router.js";
+import { ProductController } from "./modules/product/product.controller.js";
 
 const app = express();
 
@@ -64,9 +71,11 @@ app.use("/api/v1/auth/signup", limiter(10));
 app.use("/api/v1/auth/login", limiter(10));
 app.use("/api/v1/auth", limiter(100));
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/products", productRouter);
 
 app.use("/api/v1/categories", categoryRouter);
 app.use("/api/v1/admin/categories", adminCategoryRouter);
+app.use("/api/v1/admin/products", adminCategoryRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
