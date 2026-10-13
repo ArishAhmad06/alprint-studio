@@ -75,7 +75,7 @@ app.use("/api/v1/products", productRouter);
 
 app.use("/api/v1/categories", categoryRouter);
 app.use("/api/v1/admin/categories", adminCategoryRouter);
-app.use("/api/v1/admin/products", adminCategoryRouter);
+app.use("/api/v1/admin/products", adminProductRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
