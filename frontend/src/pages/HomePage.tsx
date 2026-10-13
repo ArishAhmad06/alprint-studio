@@ -59,7 +59,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== SHOP BY CATEGORY ========== */}
+      {/* ========== SHOP BY CATEGORY ============ */} 
       <section className="max-w-[1440px] mx-auto px-4 lg:px-8 py-16 lg:py-24">
         <div className="flex items-end justify-between mb-10">
           <div>
